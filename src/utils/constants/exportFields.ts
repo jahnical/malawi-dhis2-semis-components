@@ -3,7 +3,7 @@ import { CustomAttributeProps, VariablesTypes } from 'dhis2-semis-types';
 import { DataStoreProps } from '../../types/dataStore/DataStoreConfig';
 import { formatStringToTitleCase } from 'dhis2-semis-functions';
 
-export function exportFields(module: "attendance" | "final-result" | "enrollment" | "performance", filters: DataStoreProps['filters']): any[] {
+export function exportFields(module: "attendance" | "final-result" | "enrollment" | "performance" | "admission", filters: DataStoreProps['filters']): any[] {
 
     const commonFields = [
         {

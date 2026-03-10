@@ -8,7 +8,7 @@ import { useDataStoreKey } from '../../../hooks/dataStore/useDataStoreKey';
 import { TranslationState } from '../../../schemas/translationsSchema';
 import { useRecoilValue } from 'recoil';
 
-export default function ModalExportEmpty({ open, setOpen, onSubmit, module, Form }: { Form: any, onSubmit: (rows: any) => void, open: boolean, setOpen: (args: boolean) => void, module: "attendance" | "final-result" | "enrollment" | "performance" }) {
+export default function ModalExportEmpty({ open, setOpen, onSubmit, module, Form }: { Form: any, onSubmit: (rows: any) => void, open: boolean, setOpen: (args: boolean) => void, module: "attendance" | "final-result" | "enrollment" | "performance" | "admission" }) {
     const { urlParameters } = useUrlParams()
     const { schoolName: orgUnitName, academicYear, sectionType } = urlParameters
     const { filters } = useDataStoreKey({ sectionType: sectionType as unknown as "student" | "staff" })

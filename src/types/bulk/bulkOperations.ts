@@ -76,7 +76,7 @@ interface ExportData {
      *
      * @type {?string}
      */
-    module: "attendance" | "final-result" | "enrollment" | "performance",
+    module: "attendance" | "final-result" | "enrollment" | "performance" | "admission",
 
     /**
      * Settings saved at data store
@@ -135,7 +135,7 @@ interface excelProps {
 
 interface excelData {
     excelData: {
-        module: "attendance" | "final-result" | "enrollment" | "performance",
+        module: "attendance" | "final-result" | "enrollment" | "performance" | "admission",
         mapping: []
     }
 }
@@ -190,7 +190,7 @@ interface importData {
      *
      * @type {string}
      */
-    module: "attendance" | "final-result" | "enrollment" | "performance"
+    module: "attendance" | "final-result" | "enrollment" | "performance" | "admission"
 
     /**
      * The selected program definitions

@@ -23,6 +23,7 @@ import SemisHeader from "./components/header/semis"
 import useHeaderKey from "./hooks/header/useHeaderValues"
 import { HeaderValuesState } from "./schemas/headerDataSchema"
 import ModalSearchEnrollmentContent from "./components/searchEnrollment/ModalSearchEnrollmentContent"
+import ModalSearchAdmissionContent from "./components/searchAdmission/ModalSearchAdmissionContent"
 import { useDataStoreKey } from './hooks/dataStore/useDataStoreKey'
 import { useGetUsedProgramStages } from "./hooks/programStages/useGetUsedPProgramStages"
 import AsssignFinalResult from './components/assingFinalResult/assignFinalResult'
@@ -74,6 +75,7 @@ export {
     DataImporter,
     SemisHeader,
     ModalSearchEnrollmentContent,
+    ModalSearchAdmissionContent,
     AsssignFinalResult,
     PerformPromotion,
     CustomDropdown,

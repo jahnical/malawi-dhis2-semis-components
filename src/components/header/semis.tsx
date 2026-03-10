@@ -18,7 +18,7 @@ const SemisHeaderRaw = ({ headerItems, program, dataStoreValues, baseUrl = "http
     const hash = window.location.hash;
     const queryString = hash.split('?')[1];
     const searchParams = new URLSearchParams(queryString);
-    const { otherItems = [], hideTree = false, hideDataStoreFilters = false, hideAcademicYear = false } = headerItems ?? {}
+    const { otherItems = [], hideTree = false, hideDataStoreFilters = false, hideAcademicYear = false, academicYearLabel, academicYearDataElement } = headerItems ?? {}
     const i18n = useRecoilValue(TranslationState) as any
 
 
@@ -96,8 +96,9 @@ const SemisHeaderRaw = ({ headerItems, program, dataStoreValues, baseUrl = "http
             otherItemsValues[item?.ulrParam] = getSelectedValue
         })
 
+        const yearDataElement = academicYearDataElement ?? schoolCalendar?.academicYear
         setHeaderValues({
-            selectedAcademicYear: getOptionsByDataElement(schoolCalendar?.academicYear, program)?.filter((option: OptionProps) => option.value === academicYear)?.[0] as OptionProps,
+            selectedAcademicYear: getOptionsByDataElement(yearDataElement, program)?.filter((option: OptionProps) => option.value === academicYear)?.[0] as OptionProps,
             selectedOu: { displayName: schoolName, id: school, selected: [] },
             ...otherItemsValues
         })
@@ -111,7 +112,8 @@ const SemisHeaderRaw = ({ headerItems, program, dataStoreValues, baseUrl = "http
     }
 
     const onChangeAcademicYear = (event: any) => {
-        const getSelectOption = getOptionsByDataElement(schoolCalendar.academicYear, program)?.filter((option: OptionProps) => option.value === event.selected)[0] as OptionProps
+        const yearDataElement = academicYearDataElement ?? schoolCalendar?.academicYear
+        const getSelectOption = getOptionsByDataElement(yearDataElement, program)?.filter((option: OptionProps) => option.value === event.selected)[0] as OptionProps
         setHeaderValues(prevState => ({ ...prevState, selectedAcademicYear: getSelectOption }))
         add("academicYear", getSelectOption.value)
         setOpenAcademicYear(!openAcademicYear)
@@ -141,7 +143,7 @@ const SemisHeaderRaw = ({ headerItems, program, dataStoreValues, baseUrl = "http
                                         remove(item?.ulrParam)
                                     }}
                                     label={formatStringToTitleCase(item.label) ?? i18n.t("No Label")}
-                                    value={searchParams.get(item?.ulrParam) ? headerValues[item?.ulrParam]?.value : ""}
+                                    value={searchParams.get(item?.ulrParam) ? headerValues[item?.ulrParam]?.label : ""}
                                     noValueMessage={item.placehoder ?? `${i18n.t("Select a")} ${formatStringToLowerCase(item.label) ?? i18n.t("item")}`}
                                     open={item.open}
                                     setOpen={() => onOpenDynamicItems(item)}
@@ -161,13 +163,17 @@ const SemisHeaderRaw = ({ headerItems, program, dataStoreValues, baseUrl = "http
                     {
                         !hideAcademicYear &&
                         <SelectorBarItem
-                            label={i18n.t("Academic year")}
-                            value={academicYear ?? headerValues?.selectedAcademicYear?.value}
-                            noValueMessage={i18n.t("Select a academic year")}
+                            label={academicYearLabel ? i18n.t(academicYearLabel) : i18n.t("Academic year")}
+                            value={headerValues?.selectedAcademicYear?.label ?? ""}
+                            noValueMessage={academicYearLabel ? i18n.t(`Select a ${academicYearLabel.toLowerCase()}`) : i18n.t("Select a academic year")}
                             open={openAcademicYear}
                             setOpen={() => setOpenAcademicYear(!openAcademicYear)}
+                            onClearSelectionClick={() => {
+                                setHeaderValues(prevState => ({ ...prevState, selectedAcademicYear: { label: "", value: "" } }))
+                                remove("academicYear")
+                            }}
                         >
-                            <MenuSelect dataElelementId={schoolCalendar?.academicYear} program={program} placeholder={i18n.t("Select a academic year")} isSeachable={false} values={getAcademicYearOptions({ schoolCalendar, program })} selected={headerValues?.selectedAcademicYear?.value} onChange={onChangeAcademicYear} />
+                            <MenuSelect dataElelementId={academicYearDataElement ?? schoolCalendar?.academicYear} program={program} placeholder={academicYearLabel ? i18n.t(`Select a ${academicYearLabel.toLowerCase()}`) : i18n.t("Select a academic year")} isSeachable={false} values={academicYearDataElement ? getOptionsByDataElement(academicYearDataElement, program) : getAcademicYearOptions({ schoolCalendar, program })} selected={headerValues?.selectedAcademicYear?.value} onChange={onChangeAcademicYear} />
                         </SelectorBarItem>
                     }
                 </div>
@@ -207,7 +213,7 @@ const SemisHeaderRaw = ({ headerItems, program, dataStoreValues, baseUrl = "http
                                 remove(item?.ulrParam)
                             }}
                             label={formatStringToTitleCase(item.label) ?? i18n.t("No Label")}
-                            value={searchParams.get(item?.ulrParam) ? headerValues[item?.ulrParam]?.value : ""}
+                            value={searchParams.get(item?.ulrParam) ? headerValues[item?.ulrParam]?.label : ""}
                             noValueMessage={item.placehoder ?? `${i18n.t("Select a")} ${formatStringToLowerCase(item.label) ?? i18n.t("item")}`}
                             open={item.open}
                             setOpen={() => onOpenDynamicItems(item)}

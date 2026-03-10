@@ -30,7 +30,9 @@ export interface SemisHeaderProps {
     otherItems?: DynamicHeaderProps[]
     hideTree?: boolean,
     hideDataStoreFilters?: boolean,
-    hideAcademicYear?: boolean
+    hideAcademicYear?: boolean,
+    academicYearLabel?: string,
+    academicYearDataElement?: string
 }
 
 export interface HeaderItemProps {
