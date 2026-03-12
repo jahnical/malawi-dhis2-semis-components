@@ -4,8 +4,9 @@ import { generateAttendanceEventObjects, generateEnrollmentData, generateEventOb
 import { postAttendanceValues } from "./postEvents/postAttendance";
 import { postEnrollmentData } from "./postEvents/postEnrollment";
 import { postValues } from "./postEvents/postEvents";
-import { useUrlParams } from "dhis2-semis-functions";
+import { useUrlParams, applyAcademicYearPrefix } from "dhis2-semis-functions";
 import { generateAndReserveIds } from "../bulkExport/generateIds/generateAndReserve";
+import { useSchoolCalendarKey } from "../../../hooks/dataStore/useSchoolCalendarKey";
 
 type CombinedTypes = importData & excelData & { importMode: "VALIDATE" | "COMMIT" };
 
@@ -16,6 +17,7 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
     const { generate } = generateAndReserveIds()
     const { urlParameters } = useUrlParams()
     const { school: orgUnit } = urlParameters
+    const schoolCalendarData = useSchoolCalendarKey()
 
     async function importData(props: CombinedTypes) {
         setProgress((prev: any) => ({ ...prev, progress: 1, buffer: 10 }))
@@ -102,6 +104,10 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
 
                     // Generate student identifiers for rows where the value is empty
                     const studentIdAttr = (selectedSectionDataStore as any)?.admission?.studentIdentifier
+                    const admDateAttr = (selectedSectionDataStore as any)?.admission?.admissionDate
+                    const shouldReplaceYearPrefix = (selectedSectionDataStore as any)?.admission?.replaceIdentifierYearPrefix === true
+                    const calendars = (schoolCalendarData as any)?.schoolCalendar ?? []
+
                     if (studentIdAttr && !updating) {
                         const emptyIdRows = studentsData.filter((s: any) => !s[profile]?.[studentIdAttr])
                         if (emptyIdRows.length > 0) {
@@ -120,7 +126,13 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                                 for (const student of studentsData) {
                                     if (!(student as any)[profile]?.[studentIdAttr]) {
                                         if (!(student as any)[profile]) (student as any)[profile] = {}
-                                        ;(student as any)[profile][studentIdAttr] = generatedIds?.result?.[idIndex]?.value
+                                        let idValue = generatedIds?.result?.[idIndex]?.value
+                                        // Apply academic year prefix to generated identifiers
+                                        if (shouldReplaceYearPrefix && idValue && admDateAttr) {
+                                            const studentAdmDate = (student as any)[profile]?.[admDateAttr] || new Date().toISOString().split('T')[0]
+                                            idValue = applyAcademicYearPrefix(idValue, studentAdmDate, calendars)
+                                        }
+                                        ;(student as any)[profile][studentIdAttr] = idValue
                                         idIndex++
                                     }
                                 }
