@@ -5,6 +5,7 @@ import { postAttendanceValues } from "./postEvents/postAttendance";
 import { postEnrollmentData } from "./postEvents/postEnrollment";
 import { postValues } from "./postEvents/postEvents";
 import { useUrlParams } from "dhis2-semis-functions";
+import { generateAndReserveIds } from "../bulkExport/generateIds/generateAndReserve";
 
 type CombinedTypes = importData & excelData & { importMode: "VALIDATE" | "COMMIT" };
 
@@ -12,6 +13,7 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
     const { postData } = postValues({ setStats, setProgress, onError, setOpenProgress })
     const { postAttendance } = postAttendanceValues({ setStats, setProgress, onError, setOpenProgress })
     const { postEnrollments } = postEnrollmentData({ setStats, setProgress, onError, setOpenProgress })
+    const { generate } = generateAndReserveIds()
     const { urlParameters } = useUrlParams()
     const { school: orgUnit } = urlParameters
 
@@ -29,7 +31,7 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
             const profile = sectionType?.substring(0, 1)?.toUpperCase() + sectionType?.substring(1, sectionType?.length) + ' profile'
             const programStages = [
                 ...(
-                    excelData?.module != Modules?.Enrollment ?
+                    excelData?.module != Modules?.Enrollment && excelData?.module != Modules?.Admission ?
                         (selectedSectionDataStore as unknown as any)?.[excelData?.module].programStage ?
                             [(selectedSectionDataStore as unknown as any)?.[excelData?.module].programStage] :
                             (selectedSectionDataStore as unknown as any)?.[excelData?.module].programStages.map((x: any) => x.programStage)
@@ -93,6 +95,62 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                     ).finally(() => closeDialog())
 
                     break
+
+                case Modules.Admission: {
+                    // For admission, ignore all program stages — we only need TEI attributes + enrollment
+                    const admStagesToIgnore = programConfig?.programStages?.map(x => x.id) || []
+
+                    // Generate student identifiers for rows where the value is empty
+                    const studentIdAttr = (selectedSectionDataStore as any)?.admission?.studentIdentifier
+                    if (studentIdAttr && !updating) {
+                        const emptyIdRows = studentsData.filter((s: any) => !s[profile]?.[studentIdAttr])
+                        if (emptyIdRows.length > 0) {
+                            const attrConfig = programConfig?.programTrackedEntityAttributes?.find(
+                                (x: any) => x.trackedEntityAttribute.id === studentIdAttr
+                            )
+                            if (attrConfig?.trackedEntityAttribute?.pattern) {
+                                const generatedIds: any = await generate({
+                                    studentsNumber: emptyIdRows.length,
+                                    attributeID: studentIdAttr,
+                                    pattern: attrConfig.trackedEntityAttribute.pattern,
+                                    orgUnitId: orgUnit as unknown as string,
+                                    onError: () => onError(`Import error: Failed to generate student identifiers`)
+                                })
+                                let idIndex = 0
+                                for (const student of studentsData) {
+                                    if (!(student as any)[profile]?.[studentIdAttr]) {
+                                        if (!(student as any)[profile]) (student as any)[profile] = {}
+                                        ;(student as any)[profile][studentIdAttr] = generatedIds?.result?.[idIndex]?.value
+                                        idIndex++
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    const { enrollments: admEnrollments } = generateEnrollmentData(
+                        profile,
+                        programConfig,
+                        admStagesToIgnore,
+                        studentsData,
+                        orgUnit as unknown as string,
+                        updating,
+                        selectedSectionDataStore
+                    )
+                    setProgress((prev: any) => ({ ...prev, progress: 20, buffer: 25 }))
+
+                    await postEnrollments(
+                        admEnrollments,
+                        studentsData,
+                        importMode,
+                        programConfig?.id,
+                        updating,
+                        selectedSectionDataStore as unknown as selectedDataStoreKey,
+                        orgUnit as unknown as string
+                    ).finally(() => closeDialog())
+
+                    break
+                }
 
                 case Modules.Final_Result: {
                     const { events } = generateEventObjects(displayNames, studentsData, programConfig)

@@ -27,14 +27,21 @@ export function generateHeaders(props: GenerateHeaders) {
 
         // Admission only uses TEI attributes — skip all stage headers
         if (module === Modules.Admission) {
+            const studentIdentifierAttrId = (selectedSectionDataStore as any)?.admission?.studentIdentifier;
+
             // Build attribute list
             for (const x of programConfig?.programTrackedEntityAttributes || []) {
                 if (x?.trackedEntityAttribute?.optionSet?.options?.length > 0) {
                     filters[x.trackedEntityAttribute.id] = getFilterLables(x.trackedEntityAttribute.optionSet.options);
                 }
                 if (x.trackedEntityAttribute.generated) {
-                    attributesToGenerate.push({ attributeID: x.trackedEntityAttribute.id, pattern: x.trackedEntityAttribute.pattern ?? '' });
-                    defaultLockedHeaders.push(x.trackedEntityAttribute.id);
+                    // Skip the configured student identifier from auto-generation and locking
+                    // so the user can fill it manually in the template. Empty values will be generated during import.
+                    const isStudentIdentifier = x.trackedEntityAttribute.id === studentIdentifierAttrId;
+                    if (!isStudentIdentifier) {
+                        attributesToGenerate.push({ attributeID: x.trackedEntityAttribute.id, pattern: x.trackedEntityAttribute.pattern ?? '' });
+                        defaultLockedHeaders.push(x.trackedEntityAttribute.id);
+                    }
                 }
                 att.push({
                     header: `${x.trackedEntityAttribute.displayName}${x.mandatory && empty ? "*" : ""}`,
