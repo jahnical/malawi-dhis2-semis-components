@@ -21,7 +21,7 @@ export function areParamsValid(props: ExportData) {
         valid = false
         msg = "The header filters must not be empty"
     }
-    else if (module != Modules.Enrollment && stagesToExport.length === 0) {
+    else if (module != Modules.Enrollment && module != Modules.Admission && stagesToExport.length === 0) {
         valid = false
         msg = "The array of stages to be exported must not be empty"
     }

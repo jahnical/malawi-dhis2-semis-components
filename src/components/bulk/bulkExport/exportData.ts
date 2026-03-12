@@ -4,6 +4,7 @@ import { selectedDataStoreKey, Modules } from 'dhis2-semis-types';
 import { getMetaData } from '../../../utils/excelMetadata/getMetadata';
 import { generateHeaders } from './excelHeaders/generateExcelHeaders';
 import { getCommonSheetData } from './useGetCommonData/commonData';
+import { getAdmissionSheetData } from './useGetCommonData/admissionData';
 import { generateFile } from './dataExporter/fileGenerator';
 import { generateEmptyRows } from '../../../utils/common/generateData';
 import { generateAndReserveIds } from './generateIds/generateAndReserve';
@@ -26,6 +27,7 @@ export function useExportData(props: ExportData) {
         onError,
     } = props
     const { getData } = getCommonSheetData({ ...props, onError })
+    const { getAdmissionData } = getAdmissionSheetData({ ...props, onError })
     const { urlParameters } = useUrlParams()
     const { schoolName: orgUnitName, school: orgUnit } = urlParameters
     const { getEvents } = useGetEvents()
@@ -49,17 +51,23 @@ export function useExportData(props: ExportData) {
         if (!valid) onError(`Export error: ${msg}`)
         else {
 
-            if (empty && module != Modules.Enrollment) {
-                onError('Export error: The empty variable only applies to the enrollment module!')
+            if (empty && module != Modules.Enrollment && module != Modules.Admission) {
+                onError('Export error: The empty variable only applies to the enrollment and admission modules!')
             } else {
                 setProgress((prev: any) => ({ ...prev, progress: 1, buffer: 10 }))
                 let data: any = []
                 const { filters, formatedHeaders, attributesToGenerate, defaultLockedHeaders } = getHeaders(startDate, endDate)
                 const metadata = getMetaData(programConfig, stagesToExport)
 
-                if (!empty) data = await getData()
+                if (!empty) {
+                    if (module === Modules.Admission) {
+                        data = await getAdmissionData()
+                    } else {
+                        data = await getData()
+                    }
+                }
 
-                if (module != Modules.Enrollment) {
+                if (module != Modules.Enrollment && module != Modules.Admission) {
                     for (let teisCounter = 0; teisCounter < data?.length; teisCounter++) {
                         for (let a = 0; a < stagesToExport?.length; a++) {
                             await getEvents({
@@ -100,7 +108,7 @@ export function useExportData(props: ExportData) {
                             })
                         }
                     }
-                } else if (empty && module == Modules.Enrollment) {
+                } else if (empty && (module == Modules.Enrollment || module == Modules.Admission)) {
                     let ids: any = {}
 
                     for (const attr of attributesToGenerate) {

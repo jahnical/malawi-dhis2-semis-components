@@ -79,6 +79,9 @@ export function exportFields(module: "attendance" | "final-result" | "enrollment
 
         case Modules.Enrollment:
             return [...commonFields, ...emptyTemplateField]
+
+        case Modules.Admission:
+            return [...commonFields, ...emptyTemplateField]
     }
 
     return []
