@@ -4,9 +4,18 @@ import { generateAttendanceEventObjects, generateEnrollmentData, generateEventOb
 import { postAttendanceValues } from "./postEvents/postAttendance";
 import { postEnrollmentData } from "./postEvents/postEnrollment";
 import { postValues } from "./postEvents/postEvents";
-import { useUrlParams, applyAcademicYearPrefix } from "dhis2-semis-functions";
+import { useUrlParams } from "dhis2-semis-functions";
 import { generateAndReserveIds } from "../bulkExport/generateIds/generateAndReserve";
-import { useSchoolCalendarKey } from "../../../hooks/dataStore/useSchoolCalendarKey";
+
+const applyNextAdmissionYearPrefix = (generatedId: string, admissionDate: string): string => {
+    if (!generatedId || generatedId.length < 4 || !admissionDate) return generatedId
+
+    const admission = new Date(admissionDate)
+    if (isNaN(admission.getTime())) return generatedId
+
+    const nextYear = (admission.getFullYear() + 1).toString()
+    return nextYear + generatedId.substring(4)
+}
 
 type CombinedTypes = importData & excelData & { importMode: "VALIDATE" | "COMMIT" };
 
@@ -17,7 +26,6 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
     const { generate } = generateAndReserveIds()
     const { urlParameters } = useUrlParams()
     const { school: orgUnit } = urlParameters
-    const schoolCalendarData = useSchoolCalendarKey()
 
     async function importData(props: CombinedTypes) {
         setProgress((prev: any) => ({ ...prev, progress: 1, buffer: 10 }))
@@ -106,7 +114,6 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                     const studentIdAttr = (selectedSectionDataStore as any)?.admission?.studentIdentifier
                     const admDateAttr = (selectedSectionDataStore as any)?.admission?.admissionDate
                     const shouldReplaceYearPrefix = (selectedSectionDataStore as any)?.admission?.replaceIdentifierYearPrefix === true
-                    const calendars = (schoolCalendarData as any)?.schoolCalendar ?? []
 
                     if (studentIdAttr && !updating) {
                         const emptyIdRows = studentsData.filter((s: any) => !s[profile]?.[studentIdAttr])
@@ -127,10 +134,10 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                                     if (!(student as any)[profile]?.[studentIdAttr]) {
                                         if (!(student as any)[profile]) (student as any)[profile] = {}
                                         let idValue = generatedIds?.result?.[idIndex]?.value
-                                        // Apply academic year prefix to generated identifiers
+                                        // Apply next-year prefix from admission date to generated identifiers
                                         if (shouldReplaceYearPrefix && idValue && admDateAttr) {
                                             const studentAdmDate = (student as any)[profile]?.[admDateAttr] || new Date().toISOString().split('T')[0]
-                                            idValue = applyAcademicYearPrefix(idValue, studentAdmDate, calendars)
+                                            idValue = applyNextAdmissionYearPrefix(idValue, studentAdmDate)
                                         }
                                         ;(student as any)[profile][studentIdAttr] = idValue
                                         idIndex++
