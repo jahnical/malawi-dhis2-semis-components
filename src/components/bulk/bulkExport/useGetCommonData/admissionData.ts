@@ -2,6 +2,7 @@ import { ExportData } from "../../../../types/bulk/bulkOperations"
 import { useUrlParams } from "dhis2-semis-functions";
 import { useDataEngine } from "@dhis2/app-runtime";
 import { attributes } from "../../../../utils/format/formatData";
+import { useSchoolCalendarKey } from "../../../../hooks/dataStore/useSchoolCalendarKey";
 
 /**
  * Admission-specific data fetcher.
@@ -15,7 +16,28 @@ export function getAdmissionSheetData(props: ExportData) {
     const { selectedSectionDataStore, eventFilters = [], setProgress = () => { }, onError } = props
     const engine = useDataEngine()
     const { urlParameters } = useUrlParams()
-    const { schoolName: orgUnitName, school: orgUnit } = urlParameters
+    const { schoolName: orgUnitName, school: orgUnit, academicYear } = urlParameters
+    const { schoolCalendar } = useSchoolCalendarKey()
+
+    const admissionDateAttribute = (selectedSectionDataStore as any)?.admission?.admissionDate as string | undefined
+    const selectedCalendar = (schoolCalendar ?? []).find((cal: any) =>
+        cal?.academicYear?.code === academicYear || cal?.academicYear?.id === academicYear || cal?.id === academicYear
+    )
+    const academicYearCode = selectedCalendar?.academicYear?.code || academicYear
+    const firstYearMatch = typeof academicYearCode === 'string' ? academicYearCode.match(/\d{4}/) : null
+    const admissionYear = firstYearMatch ? Number(firstYearMatch[0]) : NaN
+    const admissionYearStart = Number.isInteger(admissionYear) ? `${admissionYear -1 }-01-01` : undefined
+    const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear - 1}-12-31` : undefined
+
+    const baseFilters = admissionDateAttribute
+        ? eventFilters.filter((filter) => !filter.startsWith(`${admissionDateAttribute}:`))
+        : [...eventFilters]
+    const admissionYearFilter = admissionDateAttribute && admissionYearStart && admissionYearEnd
+        ? `${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`
+        : undefined
+    const effectiveFilters = admissionYearFilter ? [...baseFilters, admissionYearFilter] : baseFilters
+
+    console.log("Admission Filter: ", admissionYearFilter)
 
     async function getAdmissionData() {
         try {
@@ -28,7 +50,7 @@ export function getAdmissionSheetData(props: ExportData) {
                         orgUnit: orgUnit ?? undefined,
                         ouMode: orgUnit != null ? "SELECTED" : "ACCESSIBLE",
                         paging: false,
-                        ...(eventFilters.length > 0 ? { filter: eventFilters } : {}),
+                        ...(effectiveFilters.length > 0 ? { filter: effectiveFilters } : {}),
                     }
                 }
             })
