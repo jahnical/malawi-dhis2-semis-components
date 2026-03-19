@@ -45,10 +45,10 @@ interface RowActionsType {
      */
     loading: boolean
     /**
-     * To set the action disabled
-     * @type {boolean}
+     * To set the action disabled. Can be static or computed from row data.
+     * @type {boolean | ((row?: Record<string, any>) => boolean)}
      */
-    disabled: boolean
+    disabled: boolean | ((row?: Record<string, any>) => boolean)
     /**
      * To define whether row inactivity affects the action.
      * @type {boolean}

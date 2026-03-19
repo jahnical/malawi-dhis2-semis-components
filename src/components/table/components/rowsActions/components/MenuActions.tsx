@@ -10,6 +10,14 @@ export default function MenuActions(props: RowActionsProps) {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
+  const isActionDisabled = (item: any) => {
+    const isOptionDisabled = typeof item.disabled === 'function'
+      ? item.disabled(row)
+      : item.disabled;
+
+    return isOptionDisabled || (disabled && Boolean(item.disableOnInactive));
+  }
+
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -53,7 +61,7 @@ export default function MenuActions(props: RowActionsProps) {
               item.onClick({ row });
               handleClose();
             }}
-            disabled={item.disabled || (disabled && Boolean(item.disableOnInactive))}
+            disabled={isActionDisabled(item)}
           >
             <ListItemIcon>
               {item.icon}

@@ -6,6 +6,14 @@ import { IconButton, Tooltip } from '@mui/material';
 export default function IconActions(props: RowActionsProps) {
   const { actions, disabled, row } = props;
 
+  const isActionDisabled = (option: RowActionsType) => {
+    const isOptionDisabled = typeof option.disabled === 'function'
+      ? option.disabled(row)
+      : option.disabled;
+
+    return isOptionDisabled || (disabled && Boolean(option.disableOnInactive));
+  }
+
   return (
     <React.Fragment>
       {
@@ -13,18 +21,18 @@ export default function IconActions(props: RowActionsProps) {
           <Tooltip
             key={i}
             title={option.label}
-            disableHoverListener={(option.disabled || (disabled && Boolean(option.disableOnInactive)))}
+            disableHoverListener={isActionDisabled(option)}
           >
             <div
-              style={{ cursor: (option.disabled || (disabled && Boolean(option.disableOnInactive))) ? 'not-allowed' : "pointer" }}
+              style={{ cursor: isActionDisabled(option) ? 'not-allowed' : "pointer" }}
             >
               <IconButton
                 onClick={(event) => {
                   option.onClick({ row });
                 }}
                 className={style.rowActionsIcon}
-                disabled={option.disabled || (disabled && Boolean(option.disableOnInactive))}
-                style={{ color: option.color, opacity: (option.disabled || (disabled && Boolean(option.disableOnInactive))) ? "0.5" : "1" }}
+                disabled={isActionDisabled(option)}
+                style={{ color: option.color, opacity: isActionDisabled(option) ? "0.5" : "1" }}
               >
                 {option.icon}
               </IconButton>
