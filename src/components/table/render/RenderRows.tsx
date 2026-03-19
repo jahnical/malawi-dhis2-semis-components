@@ -191,7 +191,7 @@ function RenderRows(props: RenderRowsProps): React.ReactElement {
                                 isOwnershipOu={checkOwnershipOu(row.ownershipOu, selectedOU)}
                                 style={{ ...classes.row, ...classes.dataRow, ...((searchActions && showEnrollments) ? classes.dataRowCollapsed : {}) }}
                             >
-                                {renderRowCheckBox({ row, disabled: (checkCanceled(row.status) && !enableInactiveRowSelection) })}
+                                {renderRowCheckBox({ row, disabled: (checkCanceled(row.status) && !enableInactiveRowSelection) || Boolean(row.disableSelection) })}
                                 {renderRowIndex({ index })}
                                 {
                                     headerData?.filter((x: any) => x.visible)?.map((column: any) => (
@@ -230,7 +230,7 @@ function RenderRows(props: RenderRowsProps): React.ReactElement {
                                 inactive={checkCanceled(row.status)}
                                 rowIndex={renderRowIndex({ index })}
                                 rowActions={renderRowAction({ row })}
-                                checkBox={renderRowCheckBox({ row, disabled: checkCanceled(row.status) })}
+                                checkBox={renderRowCheckBox({ row, disabled: checkCanceled(row.status) || Boolean(row.disableSelection) })}
                             />
                         }
 

@@ -98,6 +98,7 @@ function Table(props: TableRenderProps): React.ReactElement {
     const classes = useStyles()
     const [filteredHeaders, setFilteredHeaders] = useState<CustomAttributeProps[]>([])
     const filtered = enableInactiveRowSelection ? tableData : tableData.filter(x => !checkCanceled(x.status))
+    const selectableFilteredRows = filtered.filter((x: any) => !x.disableSelection)
 
     const onPageChange = (newPage: number) => setPagination({ ...pagination, page: newPage })
 
@@ -105,11 +106,13 @@ function Table(props: TableRenderProps): React.ReactElement {
 
     const onCheckboxChange = (row: any, all?: boolean) => {
         if (all) {
-            if (all && filtered.length === selected.length) setSelected([])
+            if (all && selectableFilteredRows.length === selected.length) setSelected([])
             else {
-                setSelected([...filtered])
+                setSelected([...selectableFilteredRows])
             }
         } else {
+            if (row?.disableSelection) return
+
             const index = selected.findIndex((x: any) => deepEqual(x, row))
 
             if (index > -1) {
@@ -180,7 +183,7 @@ function Table(props: TableRenderProps): React.ReactElement {
                                         showRowActions={showRowActions}
                                         onChange={onCheckboxChange}
                                         isCheckbox={selectable}
-                                        selectedAll={!loading && filtered?.length === selected?.length}
+                                        selectedAll={!loading && selectableFilteredRows?.length === selected?.length}
                                     />
                                 }
                                 {!loading && (
