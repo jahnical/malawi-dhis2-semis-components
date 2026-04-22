@@ -92,7 +92,9 @@ function Table(props: TableRenderProps): React.ReactElement {
         showHeaderFilters = true,
         showWorkingListsContainer = true,
         paginate = true,
-        beforeSettings
+        beforeSettings,
+        enrollmentCheckAcademicYear,
+        ignoreOrgUnitForEnrollmentCheck,
     } = props
 
     const classes = useStyles()
@@ -206,6 +208,8 @@ function Table(props: TableRenderProps): React.ReactElement {
                                         selected={selected}
                                         isCheckbox={selectable}
                                         enableInactiveRowSelection={enableInactiveRowSelection}
+                                        enrollmentCheckAcademicYear={enrollmentCheckAcademicYear}
+                                        ignoreOrgUnitForEnrollmentCheck={ignoreOrgUnitForEnrollmentCheck}
                                     />
                                 )}
                             </>

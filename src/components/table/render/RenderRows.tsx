@@ -96,7 +96,7 @@ function RenderRows(props: RenderRowsProps): React.ReactElement {
     const { academicYear, sectionType, school } = urlParameters
     const { registration } = useDataStoreKey({ sectionType: sectionType as unknown as "student" | "staff" })
     const [showEnrollments, setShowEnrollments] = useState<string>()
-    const { headerData, rowsData = [], pagination, searchActions, showRowIndex, loading, viewPortWidth, selectedOU, showRowActions, rowAction, displayType, programConfig, inactiveRowMessage, onRowClick, indeterminate, isCheckbox, onChange, selected, enableInactiveRowSelection } = props;
+    const { headerData, rowsData = [], pagination, searchActions, showRowIndex, loading, viewPortWidth, selectedOU, showRowActions, rowAction, displayType, programConfig, inactiveRowMessage, onRowClick, indeterminate, isCheckbox, onChange, selected, enableInactiveRowSelection, enrollmentCheckAcademicYear, ignoreOrgUnitForEnrollmentCheck = false } = props;
     const i18n = useRecoilValue(TranslationState) as any
 
     const isSelected = (row: any): boolean => selected?.find((item: any) => deepEqual(item, row));
@@ -243,10 +243,11 @@ function RenderRows(props: RenderRowsProps): React.ReactElement {
                                     <EnrollmentDetailsComponent programConfig={programConfig} existingAcademicYear={checkEnrolledAcademicYear
                                         (
                                             row?.registrationEvents,
-                                            academicYear as unknown as string,
+                                            (enrollmentCheckAcademicYear ?? academicYear) as unknown as string,
                                             registration.academicYear,
                                             school!,
-                                            sectionType!
+                                            sectionType!,
+                                            ignoreOrgUnitForEnrollmentCheck
                                         )} onSelectTei={onRowClick ? () => onRowClick(row) : undefined} enrollmentsData={row.registrationEvents} />
                                 </RowCell>
                             </RowTable>

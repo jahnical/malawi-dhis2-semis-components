@@ -72,6 +72,8 @@ interface RenderRowsProps {
     indeterminate?: boolean
     selected?: any
     enableInactiveRowSelection?: boolean
+    enrollmentCheckAcademicYear?: string
+    ignoreOrgUnitForEnrollmentCheck?: boolean
 }
 
 interface MobileRowsProps {
@@ -145,6 +147,8 @@ interface TableRenderProps {
     showWorkingListsContainer?: boolean
     paginate?: boolean
     enableInactiveRowSelection?: boolean
+    enrollmentCheckAcademicYear?: string
+    ignoreOrgUnitForEnrollmentCheck?: boolean
 }
 
 
