@@ -35,10 +35,16 @@ export const lock = {
 export const dataValidation = {
     type: 'list',
     allowBlank: true,
-    showDropDown: true,
+    // Counter-intuitively, the underlying OOXML attribute this maps to
+    // *suppresses* the dropdown arrow when true. Omitting/false is what
+    // actually shows the dropdown control in Excel.
+    showDropDown: false,
     showErrorMessage: true,
     errorTitle: 'Invalid Entry',
-    error: 'Please select a value from the list.'
+    error: 'Please select a value from the list.',
+    showInputMessage: true,
+    promptTitle: 'Select a value',
+    prompt: 'Choose one of the listed options.'
 }
 
 export const cancelled = {

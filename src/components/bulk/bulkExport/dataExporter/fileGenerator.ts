@@ -21,6 +21,15 @@ export function generateFile({ unavailableDays, config }: { unavailableDays: (da
         const workSheets = { ...(module === Modules.Attendance ? separateByMonth(headers.find(x => x.name === 'Attendance').headers) : { [module]: module }) }
         const { validationHeaders, validationRows } = generateValidationSheet(filters)
 
+        // Column-key -> hint text, used to add cell notes / input prompts guiding
+        // users on how to fill in each column (format, required, dropdown, etc.).
+        const noteByKey: Record<string, string> = {}
+        headers.forEach(section => {
+            (section.name === 'Attendance' ? [] : section.headers).forEach((headerInfo: any) => {
+                if (headerInfo?.note) noteByKey[headerInfo.key] = headerInfo.note
+            });
+        });
+
         let validationSheet = workbook.addWorksheet('Validation', { state: 'veryHidden' })
         validationSheet.columns = validationHeaders;
         validationRows.map((row: any) => validationSheet.addRow(row))
@@ -73,13 +82,16 @@ export function generateFile({ unavailableDays, config }: { unavailableDays: (da
             });
 
             headers.map((section) => {
-                (section?.name == 'Attendance' ? workSheets[workSheet] : section.headers).map(() => {
+                (section?.name == 'Attendance' ? workSheets[workSheet] : section.headers).map((headerInfo: any) => {
                     counter++
 
                     const cell = secondRow.getCell(counter);
                     cell.fill = { fgColor: { argb: section.fill }, ...fill as unknown as any }
                     cell.border = border as unknown as any
                     cell.font = { bold: true };
+                    // Hover-over hint on the column title, e.g. expected format,
+                    // required, or "select from dropdown".
+                    if (headerInfo?.note) cell.note = headerInfo.note;
                 })
             })
 
@@ -128,8 +140,13 @@ export function generateFile({ unavailableDays, config }: { unavailableDays: (da
                             const colFilter = filters?.[dataElementId[1]] ?? filters?.[dataElementId[0]] ?? filters["Attendance"]
                             const columnLetter = convertNumberToLetter(validationSheet.getColumn(regex.test(columnHeader) ? 'Attendance' : dataElementId?.[1] ?? dataElementId?.[0]).number);
                             const formula = `'${validationSheet.name}'!$${columnLetter}$2:$${columnLetter}$${colFilter.split(',').length + 1}`;
+                            const columnHint = noteByKey[colKey];
 
-                            cell.dataValidation = { ...dataValidation, formulae: [formula] };
+                            cell.dataValidation = {
+                                ...dataValidation,
+                                formulae: [formula],
+                                ...(columnHint ? { promptTitle: String(columnHeader), prompt: columnHint } : {})
+                            };
                         }
                     }
                 });
