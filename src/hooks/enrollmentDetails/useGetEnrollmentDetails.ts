@@ -13,10 +13,14 @@ export function useGetEnrollmentData(props: ExportData) {
 
     const getEnrollmentDetails = async (events: any) => {
         const percentagem = module === Modules.Enrollment ? 80 : 40
-        const trackedEntityIds = events?.map((x: { trackedEntity: string }) => x.trackedEntity).join(',')
+        // Must be semicolon-joined: the shared query param mapping splits a
+        // multi-id string on ";" before sending it as the `trackedEntity` filter.
+        // A comma-joined string is never split, so the whole blob is sent as one
+        // (invalid) id and the request silently matches nothing.
+        const trackedEntityIds = events?.map((x: { trackedEntity: string }) => x.trackedEntity).join(';')
 
         try {
-            return getTeis({ program: selectedSectionDataStore?.program as unknown as string, trackedEntities: trackedEntityIds, orgUnit })
+            return getTeis({ program: selectedSectionDataStore?.program as unknown as string, trackedEntities: trackedEntityIds, orgUnitMode: "SELECTED", orgUnit })
                 .then(async (trackedEntityInstances: any) => {
                     let rows: any = []
                     let counter = 0
