@@ -115,7 +115,7 @@ interface TableRenderProps {
     setSelected?: (arg: any) => void,
     columns: any,
     loading?: boolean,
-    createSortHandler?: () => void,
+    createSortHandler?: (property: string) => (() => void) | void,
     order?: "asc" | "desc",
     orderBy?: any,
     rowsPerPages?: { value: number, label: string }[],
