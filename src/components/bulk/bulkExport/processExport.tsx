@@ -1,5 +1,6 @@
 import { ExportData } from "../../../types/bulk/bulkOperations"
 import { useState, useEffect } from 'react'
+import { Button } from "@dhis2/ui";
 import ModalExportEmpty from "../modal/modalExport";
 import { useExportData } from "./exportData";
 import ModalProgress from "../progress/interactiveProgress";
@@ -7,7 +8,7 @@ import { Modules } from "dhis2-semis-types";
 import { useGetFileName } from "../../../hooks/common/useGetFileName";
 
 export default function ProcessExport(props: ExportData) {
-    const { empty = false, label, module, Form } = props
+    const { empty = false, label, module, Form, button } = props
     const [open, setOpen] = useState(false)
     const [openPogress, setOpenProgress] = useState(false)
     const [progress, setProgress] = useState({ prorocess: "export", progress: 0, buffer: 0 })
@@ -27,15 +28,24 @@ export default function ProcessExport(props: ExportData) {
         }
     }, [progress.progress])
 
+    async function startExport() {
+        if (empty || module === Modules.Attendance) setOpen(true)
+        else await exportData({ fileName: fileName })
+    }
+
     return (
         <>
-            <a style={{ width: "100%", cursor: "pointer", padding: "5px" }} onClick={async (e) => {
-                e.preventDefault()
-                if (empty || module === Modules.Attendance) setOpen(true)
-                else await exportData({ fileName: fileName })
-            }}>
-                {label}
-            </a>
+            {button
+                ? <Button icon={button.icon} disabled={button.disabled} onClick={() => { void startExport() }}>
+                    {label}
+                </Button>
+                : <a style={{ width: "100%", cursor: "pointer", padding: "5px" }} onClick={async (e) => {
+                    e.preventDefault()
+                    await startExport()
+                }}>
+                    {label}
+                </a>
+            }
 
             <ModalExportEmpty
                 onSubmit={exportData}
