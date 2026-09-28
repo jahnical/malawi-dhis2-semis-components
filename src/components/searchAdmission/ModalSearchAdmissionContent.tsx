@@ -4,7 +4,7 @@ import styles from "../modal/modal.module.css"
 import WithBorder from "../template/WithBorder";
 import WithPadding from "../template/WithPadding";
 import CustomForm from "../form/form";
-import { useSearchEnrollments, useUrlParams } from 'dhis2-semis-functions'
+import { getSectionLabels, useSearchEnrollments, useUrlParams } from 'dhis2-semis-functions'
 import useGetSearchEnrollmentForm from "../../hooks/enrollmentSearch/useGetSearchEnrollmentForm";
 import { ProgramConfig } from 'dhis2-semis-types'
 import { useGetProgramsAttributes } from "../../utils/tei/useGetProgramsAttributes";
@@ -63,6 +63,7 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
       academicYear;
 
   const i18n = useRecoilValue(TranslationState) as any
+  const sectionLabels = getSectionLabels(sectionName, i18n)
 
   const rowsActions: any = [
     { icon: <IconInfo24 />, color: '#144b73', label: i18n.t("View history"), disabled: false },
@@ -199,7 +200,7 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
                         onFormSubtmit={(e: any) => onHandleSubmit()}
                         onInputChange={(e: any) => onHandleChange(e)}
                         onCancel={onReset}
-                        submitButtonLabel={`${i18n.t("Search")} ${sectionName.toLocaleLowerCase()}`}
+                        submitButtonLabel={i18n.t("Search {{section}}", { section: sectionLabels.plural })}
                         Form={Form}
                         withButtons={true}
                         loading={loading}
@@ -220,7 +221,7 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
                     columns={searchableAttributes}
                     programConfig={programConfig}
                     tableData={enrollmentValues}
-                    title={`${i18n.t("Results found for")} ${sectionName} ${i18n.t("search")}`}
+                    title={i18n.t("{{section}} search results", { section: sectionLabels.title })}
                     rowAction={rowsActions}
                     onRowClick={onSelectTei}
                     displayType="icon"
@@ -233,8 +234,8 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
                     ignoreOrgUnitForEnrollmentCheck
                   />
                 </div> :
-                <NoticeBox className={styles.noticeBox} title={`${i18n.t("No")} ${sectionName} ${i18n.t("found")}`}>
-                  {i18n.t("Continue searching or click")} <strong>'{i18n.t("Admit new")}'</strong> {i18n.t("if you want to admit as a new")} <strong>{sectionName}</strong>.
+                <NoticeBox className={styles.noticeBox} title={i18n.t("No {{section}} found", { section: sectionLabels.plural })}>
+                  {i18n.t("Continue searching or click")} <strong>'{i18n.t("Admit new")}'</strong> {i18n.t("if you want to admit as a new")} <strong>{sectionLabels.singular}</strong>.
                 </NoticeBox>}
             </>
           </Collapse>

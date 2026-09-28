@@ -1,3 +1,4 @@
+import { getSectionProfile } from "dhis2-semis-types";
 function extractAcademicYearTokens(value: unknown): string[] {
     if (value === undefined || value === null) return [];
     const matches = String(value).match(/\d{4}/g);
@@ -44,7 +45,7 @@ export function checkEnrolledAcademicYear(
         return false;
     }
 
-    if (sectionType === 'staff' && !ignoreOrgUnitForEnrollmentCheck) {
+    if (getSectionProfile(sectionType).enrollmentCheckScopedToSchool && !ignoreOrgUnitForEnrollmentCheck) {
         return sameYearEvents.some((event: any) => event?.orgUnitId === selectedSchool);
     }
 
