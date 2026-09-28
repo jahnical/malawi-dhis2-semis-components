@@ -75,7 +75,7 @@ function RenderHeader(props: RenderHeaderProps): React.ReactElement {
                 style={{ ...classes.cell, ...classes.headerCell, color: headerColor }}
             >
                 {
-                    sortable ?
+                    sortable && column.sortable !== false ?
                         <SortLabel
                             active={orderBy === column.id}
                             direction={orderBy === column.id ? order : 'asc'}
