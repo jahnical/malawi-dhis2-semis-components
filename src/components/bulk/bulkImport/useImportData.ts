@@ -82,6 +82,7 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                         })),
                         dataStore: selectedSectionDataStore,
                         calendars: schoolCalendar?.schoolCalendar,
+                        programConfig,
                         sectionType,
                     });
                     /**
