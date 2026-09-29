@@ -2,7 +2,7 @@ import { importStrategy } from "../../../../types/bulk/bulkOperations";
 import { selectedDataStoreKey } from 'dhis2-semis-types';
 import { splitArrayIntoChunks } from "../../../../utils/common/splitArray";
 import { importSummary } from "../../../../utils/common/getImportSummary";
-import { useUploadEvents } from "dhis2-semis-functions";
+import { formatTrackerError, useUploadEvents } from "dhis2-semis-functions";
 import { useGetEvents } from "dhis2-semis-functions";
 import { TranslationState } from "../../../..//schemas/translationsSchema";
 import { useRecoilValue } from "recoil";
@@ -89,11 +89,11 @@ export function postEnrollmentData({ setStats, setProgress, onError, setOpenProg
         const chunks = splitArrayIntoChunks(copyData, 50);
 
         for (const chunk of chunks) {
-            await uploadValues((updatingFR ? { enrollments: chunk } : { trackedEntities: chunk }), importMode, importStrategy.CREATE).then((response: any) => {
+            await uploadValues((updatingFR ? { enrollments: chunk } : { trackedEntities: chunk }), importMode, importStrategy.CREATE, { silent: true }).then((response: any) => {
                 updatedStats = importSummary(response, updatedStats)
                 updateProgressF((90 + 5 - updateProgress), (90 - updateProgress), chunks.length)
             }).catch((error: any) => {
-                updatedStats = { ...updatedStats, exceptions: [{ [i18n.t("Error message")]: error?.message }] }
+                updatedStats = { ...updatedStats, exceptions: [{ [i18n.t("Error message")]: formatTrackerError(error) }] }
                 setOpenProgress(false);
                 onError(error);
             });
