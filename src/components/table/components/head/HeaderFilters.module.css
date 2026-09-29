@@ -1,14 +1,16 @@
 .filterContainer {
     display: flex !important;
     justify-content: space-between !important;
-    height: 64px !important;
+    min-height: 64px !important;
+    height: auto !important;
+    align-items: center !important;
 }
 
 .filterContainer>div {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    height: 100% !important;
+    height: auto !important;
     padding: 0 8px !important;
 }
 

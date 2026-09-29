@@ -4,7 +4,7 @@ import styles from "../modal/modal.module.css"
 import WithBorder from "../template/WithBorder";
 import WithPadding from "../template/WithPadding";
 import CustomForm from "../form/form";
-import { useSearchEnrollments, useUrlParams } from 'dhis2-semis-functions'
+import { getSectionLabels, useSearchEnrollments, useUrlParams } from 'dhis2-semis-functions'
 import useGetSearchEnrollmentForm from "../../hooks/enrollmentSearch/useGetSearchEnrollmentForm";
 import { ProgramConfig } from 'dhis2-semis-types'
 import { useGetProgramsAttributes } from "../../utils/tei/useGetProgramsAttributes";
@@ -13,6 +13,7 @@ import { getRecentEnrollment } from "../../utils/tei/getRecentEnrollment";
 import Table from "../table/render/Table";
 import ModalComponent from "../modal/Modal";
 import { useDataStoreKey } from "../../hooks/dataStore/useDataStoreKey";
+import { useSchoolCalendarKey } from "../../hooks/dataStore/useSchoolCalendarKey";
 import { formattedQuery } from "../../utils/search/formatQuery";
 import { IconInfo24 } from "@dhis2/ui";
 import { Collapse, IconButton } from "@mui/material";
@@ -28,19 +29,41 @@ export interface ModalSearchAdmissionTemplateProps {
     programConfig: ProgramConfig
     open: boolean
     setFormInitialValues?: (args: any) => void
+    onSelectTeiForEnrollment?: (args: {
+      trackedEntityId: string
+      enrollmentId?: string
+      activeEnrollmentToComplete?: string
+      activeEnrollmentEnrolledAt?: string
+      initialValues?: Record<string, any>
+    }) => void
 }
 
 function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
-  const { sectionName, setOpenNewAdmissionModal, programConfig, open, setOpen, Form, setFormInitialValues } = props;
+  const { sectionName, setOpenNewAdmissionModal, programConfig, open, setOpen, Form, setFormInitialValues, onSelectTeiForEnrollment } = props;
   const { searchEnrollmentFields } = useGetSearchEnrollmentForm({ programConfig });
   const [showResults, setShowResults] = useState<boolean>(false)
   const { teiAttributes, searchableAttributes } = useGetProgramsAttributes({ programConfig });
   const { registration, program, "socio-economics": socioEconomics } = useDataStoreKey({ sectionType: sectionName })
+  const schoolCalendar = useSchoolCalendarKey()
   const { enrollmentValues, setEnrollmentValues, loading, getEnrollmentsData } = useSearchEnrollments({ program, registration, socioEconomics })
   const [collapseAttributes, setCollapseAttributes] = useState(0)
   const { urlParameters } = useUrlParams();
   const { school: orgUnit, schoolName: orgUnitName, academicYear } = urlParameters
+    const defaultCalendarAcademicYear = (schoolCalendar as any)?.defaults?.academicYear;
+    const calendars = (schoolCalendar as any)?.schoolCalendar ?? [];
+    const defaultCalendar = calendars.find((cal: any) =>
+      cal?.academicYear?.code === defaultCalendarAcademicYear ||
+      cal?.academicYear?.id === defaultCalendarAcademicYear ||
+      cal?.id === defaultCalendarAcademicYear
+    );
+    const enrollmentCheckAcademicYear =
+      defaultCalendar?.academicYear?.code ??
+      defaultCalendar?.academicYear?.id ??
+      defaultCalendarAcademicYear ??
+      academicYear;
+
   const i18n = useRecoilValue(TranslationState) as any
+  const sectionLabels = getSectionLabels(sectionName, i18n)
 
   const rowsActions: any = [
     { icon: <IconInfo24 />, color: '#144b73', label: i18n.t("View history"), disabled: false },
@@ -115,6 +138,28 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
   const onSelectTei = (teiData: any) => {
     const recentEnrollment = getRecentEnrollment(teiData.enrollments).enrollment
     const recentRegistration = teiData.registrationEvents?.find((event: any) => event.enrollment === recentEnrollment)
+    const activeEnrollment = teiData.enrollments?.find((enrollment: any) => enrollment?.status === 'ACTIVE')
+    const hasEventsInActiveEnrollment = Boolean(
+      activeEnrollment && teiData.registrationEvents?.some((event: any) => event.enrollment === activeEnrollment.enrollment)
+    )
+
+    const enrollmentInitialValues = {
+      ...teiData?.mainAttributesFormatted,
+      ...recentRegistration,
+      [registration.academicYear]: academicYear
+    }
+
+    if (onSelectTeiForEnrollment) {
+      onSelectTeiForEnrollment({
+        trackedEntityId: teiData.trackedEntity,
+        enrollmentId: activeEnrollment && !hasEventsInActiveEnrollment ? activeEnrollment.enrollment : undefined,
+        activeEnrollmentToComplete: activeEnrollment && hasEventsInActiveEnrollment ? activeEnrollment.enrollment : undefined,
+        activeEnrollmentEnrolledAt: activeEnrollment?.enrolledAt,
+        initialValues: enrollmentInitialValues,
+      })
+      setOpen(false)
+      return
+    }
 
     setFormInitialValues && setFormInitialValues({
       trackedEntity: teiData.trackedEntity,
@@ -155,7 +200,7 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
                         onFormSubtmit={(e: any) => onHandleSubmit()}
                         onInputChange={(e: any) => onHandleChange(e)}
                         onCancel={onReset}
-                        submitButtonLabel={`${i18n.t("Search")} ${sectionName.toLocaleLowerCase()}`}
+                        submitButtonLabel={i18n.t("Search {{section}}", { section: sectionLabels.plural })}
                         Form={Form}
                         withButtons={true}
                         loading={loading}
@@ -176,7 +221,7 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
                     columns={searchableAttributes}
                     programConfig={programConfig}
                     tableData={enrollmentValues}
-                    title={`${i18n.t("Results found for")} ${sectionName} ${i18n.t("search")}`}
+                    title={i18n.t("{{section}} search results", { section: sectionLabels.title })}
                     rowAction={rowsActions}
                     onRowClick={onSelectTei}
                     displayType="icon"
@@ -185,10 +230,12 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
                     paginate={false}
                     showHeaderFilters={false}
                     showRowIndex={false}
+                    enrollmentCheckAcademicYear={enrollmentCheckAcademicYear}
+                    ignoreOrgUnitForEnrollmentCheck
                   />
                 </div> :
-                <NoticeBox className={styles.noticeBox} title={`${i18n.t("No")} ${sectionName} ${i18n.t("found")}`}>
-                  {i18n.t("Continue searching or click")} <strong>'{i18n.t("Admit new")}'</strong> {i18n.t("if you want to admit as a new")} <strong>{sectionName}</strong>.
+                <NoticeBox className={styles.noticeBox} title={i18n.t("No {{section}} found", { section: sectionLabels.plural })}>
+                  {i18n.t("Continue searching or click")} <strong>'{i18n.t("Admit new")}'</strong> {i18n.t("if you want to admit as a new")} <strong>{sectionLabels.singular}</strong>.
                 </NoticeBox>}
             </>
           </Collapse>

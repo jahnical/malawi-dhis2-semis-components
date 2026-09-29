@@ -20,6 +20,7 @@ export function getAdmissionSheetData(props: ExportData) {
     const { schoolCalendar } = useSchoolCalendarKey()
 
     const admissionDateAttribute = (selectedSectionDataStore as any)?.admission?.admissionDate as string | undefined
+    const academicYearAttribute = (selectedSectionDataStore as any)?.admission?.academicYearAttribute as string | undefined
     const selectedCalendar = (schoolCalendar ?? []).find((cal: any) =>
         cal?.academicYear?.code === academicYear || cal?.academicYear?.id === academicYear || cal?.id === academicYear
     )
@@ -29,15 +30,23 @@ export function getAdmissionSheetData(props: ExportData) {
     const admissionYearStart = Number.isInteger(admissionYear) ? `${admissionYear -1 }-01-01` : undefined
     const admissionYearEnd = Number.isInteger(admissionYear) ? `${admissionYear - 1}-12-31` : undefined
 
+    // Prefer filtering by the academic year attribute when configured; otherwise fall
+    // back to the legacy admission-date range.
+    const hasAcademicYearAttrFilter = Boolean(academicYear && academicYearAttribute)
+    // eventFilters may contain non-string entries (e.g. data-element filters passed as
+    // arrays from other modules), so guard startsWith against non-strings.
     const baseFilters = admissionDateAttribute
-        ? eventFilters.filter((filter) => !filter.startsWith(`${admissionDateAttribute}:`))
+        ? eventFilters.filter((filter) => !(typeof filter === 'string' && filter.startsWith(`${admissionDateAttribute}:`)))
         : [...eventFilters]
-    const admissionYearFilter = admissionDateAttribute && admissionYearStart && admissionYearEnd
-        ? `${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`
-        : undefined
-    const effectiveFilters = admissionYearFilter ? [...baseFilters, admissionYearFilter] : baseFilters
-
-    console.log("Admission Filter: ", admissionYearFilter)
+    const academicYearFilter = hasAcademicYearAttrFilter
+        ? `${academicYearAttribute}:eq:${academicYear}`
+        : admissionDateAttribute && admissionYearStart && admissionYearEnd
+            ? `${admissionDateAttribute}:ge:${admissionYearStart}:le:${admissionYearEnd}`
+            : undefined
+    const scopedBaseFilters = academicYearAttribute
+        ? baseFilters.filter((filter) => !(typeof filter === 'string' && filter.startsWith(`${academicYearAttribute}:`)))
+        : baseFilters
+    const effectiveFilters = academicYearFilter ? [...scopedBaseFilters, academicYearFilter] : scopedBaseFilters
 
     async function getAdmissionData() {
         try {
@@ -48,7 +57,9 @@ export function getAdmissionSheetData(props: ExportData) {
                         fields: "trackedEntity,createdAt,orgUnit,attributes[attribute,value],enrollments[enrollment,orgUnit,program,status],programOwners[orgUnit]",
                         program: selectedSectionDataStore?.program as unknown as string,
                         orgUnit: orgUnit ?? undefined,
-                        ouMode: orgUnit != null ? "SELECTED" : "ACCESSIBLE",
+                        // Match the admission list, which fetches across descendant org
+                        // units. SELECTED misses students owned in child org units.
+                        ouMode: orgUnit != null ? "DESCENDANTS" : "ACCESSIBLE",
                         paging: false,
                         ...(effectiveFilters.length > 0 ? { filter: effectiveFilters } : {}),
                     }

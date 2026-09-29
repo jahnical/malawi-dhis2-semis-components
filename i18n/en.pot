@@ -60,8 +60,8 @@ msgstr "No"
 msgid "found"
 msgstr "found"
 
-msgid "Continue serching or click"
-msgstr "Continue serching or click"
+msgid "Continue searching or click"
+msgstr "Continue searching or click"
 
 msgid "Register new"
 msgstr "Register new"

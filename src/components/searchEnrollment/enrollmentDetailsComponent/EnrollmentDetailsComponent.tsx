@@ -2,7 +2,7 @@ import React from "react";
 import { Button, IconAddCircle16 } from "@dhis2/ui";
 import styles from "./enrollmentDetails.module.css";
 import { useEnrollmentsHeader } from "../../../utils/table/useEnrollmentsHeader";
-import { useGetSectionTypeLabel } from "dhis2-semis-functions";
+import { getSectionLabels, useGetSectionTypeLabel } from "dhis2-semis-functions";
 import { TranslationState } from "../../../schemas/translationsSchema";
 import { useRecoilValue } from "recoil";
 
@@ -22,7 +22,7 @@ function EnrollmentDetailsComponent(props: any): React.ReactElement {
           {existingAcademicYear ?
             <i className={styles.enrolledAlertLabel}>
               {i18n.t('This {{section}} is already enrolled for this year.', {
-                section: `${i18n.t(sectionName)}s`,
+                section: getSectionLabels(sectionName, i18n).singular,
               })}
             </i>
             :

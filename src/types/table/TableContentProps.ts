@@ -72,6 +72,8 @@ interface RenderRowsProps {
     indeterminate?: boolean
     selected?: any
     enableInactiveRowSelection?: boolean
+    enrollmentCheckAcademicYear?: string
+    ignoreOrgUnitForEnrollmentCheck?: boolean
 }
 
 interface MobileRowsProps {
@@ -113,7 +115,7 @@ interface TableRenderProps {
     setSelected?: (arg: any) => void,
     columns: any,
     loading?: boolean,
-    createSortHandler?: () => void,
+    createSortHandler?: (property: string) => (() => void) | void,
     order?: "asc" | "desc",
     orderBy?: any,
     rowsPerPages?: { value: number, label: string }[],
@@ -145,6 +147,8 @@ interface TableRenderProps {
     showWorkingListsContainer?: boolean
     paginate?: boolean
     enableInactiveRowSelection?: boolean
+    enrollmentCheckAcademicYear?: string
+    ignoreOrgUnitForEnrollmentCheck?: boolean
 }
 
 

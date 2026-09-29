@@ -3,6 +3,7 @@ import { GenerateHeaders } from "../../../../types/bulk/bulkOperations";
 import { Modules } from 'dhis2-semis-types';
 import { dfHeaders } from "../../../../utils/constants/dfHeaders";
 import { getFilterLables } from "../../../../utils/format/getFilterLables";
+import { getAttributeHint } from "../../../../utils/format/getAttributeHint";
 import { useRecoilValue } from "recoil";
 import { TranslationState } from "../../../../schemas/translationsSchema";
 
@@ -31,22 +32,40 @@ export function generateHeaders(props: GenerateHeaders) {
 
             // Build attribute list
             for (const x of programConfig?.programTrackedEntityAttributes || []) {
-                if (x?.trackedEntityAttribute?.optionSet?.options?.length > 0) {
-                    filters[x.trackedEntityAttribute.id] = getFilterLables(x.trackedEntityAttribute.optionSet.options);
+                const attr = x.trackedEntityAttribute;
+                const hasOptionSet = (attr?.optionSet?.options?.length ?? 0) > 0;
+
+                if (hasOptionSet) {
+                    filters[attr.id] = getFilterLables(attr.optionSet.options);
+                } else if (attr.valueType === 'BOOLEAN') {
+                    // No optionSet exists for native booleans, so synthesize one to get
+                    // the same dropdown-validation treatment as option-set attributes.
+                    filters[attr.id] = 'true,false';
+                } else if (attr.valueType === 'TRUE_ONLY') {
+                    filters[attr.id] = 'true';
                 }
-                if (x.trackedEntityAttribute.generated) {
-                    // Skip the configured student identifier from auto-generation and locking
-                    // so the user can fill it manually in the template. Empty values will be generated during import.
-                    const isStudentIdentifier = x.trackedEntityAttribute.id === studentIdentifierAttrId;
+
+                // Skip the configured student identifier from auto-generation and locking
+                // so the user can fill it manually in the template. Empty values will be generated during import.
+                const isStudentIdentifier = attr.id === studentIdentifierAttrId;
+                if (attr.generated) {
                     if (!isStudentIdentifier) {
-                        attributesToGenerate.push({ attributeID: x.trackedEntityAttribute.id, pattern: x.trackedEntityAttribute.pattern ?? '' });
-                        defaultLockedHeaders.push(x.trackedEntityAttribute.id);
+                        attributesToGenerate.push({ attributeID: attr.id, pattern: attr.pattern ?? '' });
+                        defaultLockedHeaders.push(attr.id);
                     }
                 }
                 att.push({
-                    header: `${x.trackedEntityAttribute.displayName}${x.mandatory && empty ? "*" : ""}`,
-                    key: x.trackedEntityAttribute.id,
-                    width: x.trackedEntityAttribute.displayName.length + 2,
+                    header: `${attr.displayName}${x.mandatory && empty ? "*" : ""}`,
+                    key: attr.id,
+                    width: attr.displayName.length + 2,
+                    note: getAttributeHint({
+                        valueType: attr.valueType,
+                        mandatory: x.mandatory,
+                        generated: attr.generated,
+                        unique: attr.unique,
+                        hasOptionSet,
+                        isAutoFillExempt: isStudentIdentifier,
+                    }),
                 });
             }
 
