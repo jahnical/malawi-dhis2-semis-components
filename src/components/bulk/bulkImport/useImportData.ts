@@ -78,11 +78,12 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                             values: student[profile],
                             enrollmentYear: Object.values(student).flatMap((section: any) =>
                                 section && typeof section === 'object' ? Object.entries(section) : []
-                            ).find(([key]) => key === selectedSectionDataStore.registration.academicYear || key === `${selectedSectionDataStore.registration.programStage}.${selectedSectionDataStore.registration.academicYear}`)?.[1],
+                            ).find(([key]) => key === (selectedSectionDataStore.registration.academicYear || schoolCalendar?.academicYear) || key === `${selectedSectionDataStore.registration.programStage}.${selectedSectionDataStore.registration.academicYear || schoolCalendar?.academicYear}`)?.[1],
                         })),
                         dataStore: selectedSectionDataStore,
                         calendars: schoolCalendar?.schoolCalendar,
                         programConfig,
+                        academicYearField: selectedSectionDataStore.registration.academicYear || schoolCalendar?.academicYear,
                         sectionType,
                     });
                     /**
