@@ -3,7 +3,7 @@ import { importStrategy } from "../../../../types/bulk/bulkOperations"
 import { importSummary } from "../../../../utils/common/getImportSummary"
 import { splitArrayIntoChunks } from "../../../../utils/common/splitArray"
 import { useGetEvents } from "dhis2-semis-functions";
-import { useUploadEvents } from "dhis2-semis-functions";
+import { formatTrackerError, useUploadEvents } from "dhis2-semis-functions";
 import { TranslationState } from "../../../../schemas/translationsSchema";
 import { useRecoilValue } from "recoil";
 
@@ -76,11 +76,11 @@ export function postAttendanceValues({ setStats, setProgress, onError, setOpenPr
             const chunks = splitArrayIntoChunks(values[key], 50);
 
             for (const chunk of chunks) {
-                await uploadValues({ events: chunk }, importMode, (importStrategy as unknown as any)[key]).then((response) => {
+                await uploadValues({ events: chunk }, importMode, (importStrategy as unknown as any)[key], { silent: true }).then((response) => {
                     updatedStats = importSummary(response, updatedStats)
                     updateProgressF(50, 50, keys.length * chunks.length)
                 }).catch((error: any) => {
-                    updatedStats = { ...updatedStats, exceptions: [{ [i18n.t("Error message")]: error?.message }] }
+                    updatedStats = { ...updatedStats, exceptions: [{ [i18n.t("Error message")]: formatTrackerError(error) }] }
                     setOpenProgress(false)
                     onError(error)
                 });

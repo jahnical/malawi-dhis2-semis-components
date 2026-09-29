@@ -13,7 +13,7 @@ export default function AsssignFinalResult({ selected, Form }: { selected: any[]
     const { urlParameters } = useUrlParams()
     const { sectionType } = urlParameters
     const { "final-result": fr } = useDataStoreKey({ sectionType: sectionType as unknown as "student" | "staff" })
-    const { dataElements } = useGetDataElements({ programStageId: fr.programStage, type: "programStage" })
+    const { dataElements } = useGetDataElements({ programStageId: fr.programStage as string, type: "programStage" })
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const { uploadValues } = useUploadEvents()

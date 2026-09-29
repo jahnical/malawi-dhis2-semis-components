@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { selectedDataStoreKey, ProgramConfig } from 'dhis2-semis-types';
 import { SchoolCalendar } from '../datePicker/CalendarTypes';
 
@@ -109,6 +110,13 @@ interface ExportData {
      * @type {?boolean}
      */
     empty?: boolean
+
+    /**
+     * Render the trigger as a standalone button instead of a dropdown menu link
+     *
+     * @type {?{ icon?: ReactNode, disabled?: boolean }}
+     */
+    button?: { icon?: ReactNode, disabled?: boolean }
 }
 
 interface GenerateHeaders {

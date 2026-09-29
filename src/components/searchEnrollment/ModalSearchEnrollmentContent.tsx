@@ -4,7 +4,7 @@ import styles from "../modal/modal.module.css"
 import WithBorder from "../template/WithBorder";
 import WithPadding from "../template/WithPadding";
 import CustomForm from "../form/form";
-import { useSearchEnrollments, useUrlParams } from 'dhis2-semis-functions'
+import { getSectionLabels, useSearchEnrollments, useUrlParams } from 'dhis2-semis-functions'
 import useGetSearchEnrollmentForm from "../../hooks/enrollmentSearch/useGetSearchEnrollmentForm";
 import { ModalSearchTemplateProps } from '../../types/modal/ModalProps'
 import { useGetProgramsAttributes } from "../../utils/tei/useGetProgramsAttributes";
@@ -31,6 +31,7 @@ function ModalSearchEnrollmentContent(props: ModalSearchTemplateProps) {
   const { urlParameters } = useUrlParams();
   const { school: orgUnit, schoolName: orgUnitName, academicYear } = urlParameters
   const i18n = useRecoilValue(TranslationState) as any
+  const sectionLabels = getSectionLabels(sectionName, i18n)
 
 
   const rowsActions: any = [
@@ -153,7 +154,7 @@ function ModalSearchEnrollmentContent(props: ModalSearchTemplateProps) {
                         onFormSubtmit={(e: any) => onHandleSubmit()}
                         onInputChange={(e: any) => onHandleChange(e)}
                         onCancel={onReset}
-                        submitButtonLabel={`${i18n.t("Search")} ${sectionName.toLocaleLowerCase()}`}
+                        submitButtonLabel={i18n.t("Search {{section}}", { section: sectionLabels.plural })}
                         Form={Form}
                         withButtons={true}
                         loading={loading}
@@ -174,7 +175,7 @@ function ModalSearchEnrollmentContent(props: ModalSearchTemplateProps) {
                     columns={searchableAttributes}
                     programConfig={programConfig}
                     tableData={enrollmentValues}
-                    title={`${i18n.t("Results found for")} ${sectionName} ${i18n.t("search")}`}
+                    title={i18n.t("{{section}} search results", { section: sectionLabels.title })}
                     rowAction={rowsActions}
                     onRowClick={onSelectTei}
                     displayType="icon"
@@ -185,8 +186,8 @@ function ModalSearchEnrollmentContent(props: ModalSearchTemplateProps) {
                     showRowIndex={false}
                   />
                 </div> :
-                <NoticeBox className={styles.noticeBox} title={`${i18n.t("No")} ${sectionName} ${i18n.t("found")}`}>
-                  {i18n.t("Continue serching or click")} <strong>'{i18n.t("Register new")}'</strong> {i18n.t("if you want to register as a new")} <strong>{sectionName}</strong>.
+                <NoticeBox className={styles.noticeBox} title={i18n.t("No {{section}} found", { section: sectionLabels.plural })}>
+                  {i18n.t("Continue searching or click")} <strong>'{i18n.t("Register new")}'</strong> {i18n.t("if you want to register as a new")} <strong>{sectionLabels.singular}</strong>.
                 </NoticeBox>}
             </>
           </Collapse>
