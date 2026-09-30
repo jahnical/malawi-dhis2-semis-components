@@ -1,6 +1,5 @@
 import { ExportData } from "../../../../types/bulk/bulkOperations"
-import { useUrlParams } from "dhis2-semis-functions";
-import { useDataEngine } from "@dhis2/app-runtime";
+import { useGetCompleteTeis, useUrlParams } from "dhis2-semis-functions";
 import { attributes } from "../../../../utils/format/formatData";
 import { useSchoolCalendarKey } from "../../../../hooks/dataStore/useSchoolCalendarKey";
 
@@ -14,7 +13,7 @@ import { useSchoolCalendarKey } from "../../../../hooks/dataStore/useSchoolCalen
  */
 export function getAdmissionSheetData(props: ExportData) {
     const { selectedSectionDataStore, eventFilters = [], setProgress = () => { }, onError } = props
-    const engine = useDataEngine()
+    const { getCompleteTeis } = useGetCompleteTeis()
     const { urlParameters } = useUrlParams()
     const { schoolName: orgUnitName, school: orgUnit, academicYear } = urlParameters
     const { schoolCalendar } = useSchoolCalendarKey()
@@ -50,23 +49,17 @@ export function getAdmissionSheetData(props: ExportData) {
 
     async function getAdmissionData() {
         try {
-            const response: any = await engine.query({
-                results: {
-                    resource: "tracker/trackedEntities",
-                    params: {
-                        fields: "trackedEntity,createdAt,orgUnit,attributes[attribute,value],enrollments[enrollment,orgUnit,program,status],programOwners[orgUnit]",
-                        program: selectedSectionDataStore?.program as unknown as string,
-                        orgUnit: orgUnit ?? undefined,
-                        // Match the admission list, which fetches across descendant org
-                        // units. SELECTED misses students owned in child org units.
-                        ouMode: orgUnit != null ? "DESCENDANTS" : "ACCESSIBLE",
-                        paging: false,
-                        ...(effectiveFilters.length > 0 ? { filter: effectiveFilters } : {}),
-                    }
-                }
+            const response: any = await getCompleteTeis({
+                program: selectedSectionDataStore?.program as unknown as string,
+                orgUnit: orgUnit ?? undefined,
+                // Match the admission list, which fetches across descendant org
+                // units. SELECTED misses students owned in child org units.
+                orgUnitMode: orgUnit != null ? "DESCENDANTS" : "ACCESSIBLE",
+                paging: false,
+                ...(effectiveFilters.length > 0 ? { filter: effectiveFilters } : {}),
             })
 
-            const trackedEntities = response?.results?.instances ?? []
+            const trackedEntities = response?.results?.instances ?? response?.results?.trackedEntities ?? []
 
             setProgress((prev: any) => ({ ...prev, progress: 10, buffer: 16 }))
 

@@ -13,11 +13,8 @@ export function useGetEnrollmentData(props: ExportData) {
 
     const getEnrollmentDetails = async (events: any) => {
         const percentagem = module === Modules.Enrollment ? 80 : 40
-        // Must be semicolon-joined: the shared query param mapping splits a
-        // multi-id string on ";" before sending it as the `trackedEntity` filter.
-        // A comma-joined string is never split, so the whole blob is sent as one
-        // (invalid) id and the request silently matches nothing.
-        const trackedEntityIds = events?.map((x: { trackedEntity: string }) => x.trackedEntity).join(';')
+        // The shared query param mapping joins the ids with the separator the server's version expects.
+        const trackedEntityIds = events?.map((x: { trackedEntity: string }) => x.trackedEntity)
 
         try {
             return getTeis({ program: selectedSectionDataStore?.program as unknown as string, trackedEntities: trackedEntityIds, orgUnitMode: "SELECTED", orgUnit })
