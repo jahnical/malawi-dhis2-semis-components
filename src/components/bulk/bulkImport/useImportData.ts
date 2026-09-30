@@ -6,6 +6,8 @@ import { postEnrollmentData } from "./postEvents/postEnrollment";
 import { postValues } from "./postEvents/postEvents";
 import { useUrlParams } from "dhis2-semis-functions";
 import { generateAndReserveIds } from "../bulkExport/generateIds/generateAndReserve";
+import { useEnrollmentYearValidation } from 'dhis2-semis-functions';
+import { useSchoolCalendarKey } from '../../../hooks/dataStore/useSchoolCalendarKey';
 
 /**
  * Replaces the first 4 characters of a generated identifier with the upper
@@ -30,6 +32,8 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
     const { postAttendance } = postAttendanceValues({ setStats, setProgress, onError, setOpenProgress })
     const { postEnrollments } = postEnrollmentData({ setStats, setProgress, onError, setOpenProgress })
     const { generate } = generateAndReserveIds()
+    const validateYear = useEnrollmentYearValidation();
+    const schoolCalendar = useSchoolCalendarKey();
     const { urlParameters } = useUrlParams()
     const { school: orgUnit, academicYear } = urlParameters
 
@@ -74,6 +78,20 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                     break;
 
                 case Modules.Enrollment:
+                    await validateYear({
+                        students: studentsData.map((student: any) => ({
+                            trackedEntity: student.Ids?.trackedEntity,
+                            values: student[profile],
+                            enrollmentYear: Object.values(student).flatMap((section: any) =>
+                                section && typeof section === 'object' ? Object.entries(section) : []
+                            ).find(([key]) => key === (selectedSectionDataStore.registration.academicYear || schoolCalendar?.academicYear) || key === `${selectedSectionDataStore.registration.programStage}.${selectedSectionDataStore.registration.academicYear || schoolCalendar?.academicYear}`)?.[1],
+                        })),
+                        dataStore: selectedSectionDataStore,
+                        calendars: schoolCalendar?.schoolCalendar,
+                        programConfig,
+                        academicYearField: selectedSectionDataStore.registration.academicYear || schoolCalendar?.academicYear,
+                        sectionType,
+                    });
                     /**
                      * Ao se registar um novo estudante criam-se eventos de todos os program stages, excepto attendance e transfer e 
                      * ao se actualizar o estudante nao se cria nenhum evento, sendo assim, esse array terá uma lista de todos os 
