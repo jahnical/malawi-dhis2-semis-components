@@ -4,7 +4,7 @@ import { generateAttendanceEventObjects, generateEnrollmentData, generateEventOb
 import { postAttendanceValues } from "./postEvents/postAttendance";
 import { postEnrollmentData } from "./postEvents/postEnrollment";
 import { postValues } from "./postEvents/postEvents";
-import { useUrlParams } from "dhis2-semis-functions";
+import { getAcademicYearOptions, useUrlParams } from "dhis2-semis-functions";
 import { generateAndReserveIds } from "../bulkExport/generateIds/generateAndReserve";
 import { useEnrollmentYearValidation } from 'dhis2-semis-functions';
 import { useSchoolCalendarKey } from '../../../hooks/dataStore/useSchoolCalendarKey';
@@ -60,6 +60,19 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
             ]
 
             const displayNames = programConfig?.programStages.filter(x => programStages.includes(x.id)).map(x => x.displayName)
+            const academicYearDataElement = selectedSectionDataStore?.registration?.academicYear || schoolCalendar?.academicYear
+            const lifecycle = {
+                calendar: schoolCalendar?.schoolCalendar ?? [],
+                currentAcademicYear: schoolCalendar?.defaults?.academicYear,
+                academicYearOptions: getAcademicYearOptions(programConfig, academicYearDataElement),
+            }
+            // Shown in the import summary: the incident date falls back to the enrollment date
+            const calendarWarnings = (years: string[]) => years.map((year) => ({
+                trackerType: "ENROLLMENT",
+                warningCode: "SEMIS",
+                uid: "",
+                message: `Academic year ${year} is not in the school calendar; its enrollments use the enrollment date as the academic year start.`,
+            }))
 
             switch (excelData?.module) {
                 case Modules.Attendance:
@@ -107,14 +120,15 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                         ] : [""])
                     ]
 
-                    const { enrollments } = generateEnrollmentData(
+                    const { enrollments, yearsNotInCalendar } = generateEnrollmentData(
                         profile,
                         programConfig,
                         stagesToIgnore,
                         studentsData,
                         orgUnit as unknown as string,
                         updating,
-                        selectedSectionDataStore
+                        selectedSectionDataStore,
+                        lifecycle
                     )
                     setProgress((prev: any) => ({ ...prev, progress: 20, buffer: 25 }))
 
@@ -125,7 +139,9 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                         programConfig?.id,
                         updating,
                         selectedSectionDataStore as unknown as selectedDataStoreKey,
-                        orgUnit as unknown as string
+                        orgUnit as unknown as string,
+                        false,
+                        calendarWarnings(yearsNotInCalendar)
                     ).finally(() => closeDialog())
 
                     break
@@ -188,7 +204,8 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                         studentsData,
                         orgUnit as unknown as string,
                         updating,
-                        selectedSectionDataStore
+                        selectedSectionDataStore,
+                        { ...lifecycle, admission: true }
                     )
                     setProgress((prev: any) => ({ ...prev, progress: 20, buffer: 25 }))
 

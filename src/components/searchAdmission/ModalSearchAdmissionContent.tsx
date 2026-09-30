@@ -31,9 +31,6 @@ export interface ModalSearchAdmissionTemplateProps {
     setFormInitialValues?: (args: any) => void
     onSelectTeiForEnrollment?: (args: {
       trackedEntityId: string
-      enrollmentId?: string
-      activeEnrollmentToComplete?: string
-      activeEnrollmentEnrolledAt?: string
       initialValues?: Record<string, any>
     }) => void
 }
@@ -138,10 +135,6 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
   const onSelectTei = (teiData: any) => {
     const recentEnrollment = getRecentEnrollment(teiData.enrollments).enrollment
     const recentRegistration = teiData.registrationEvents?.find((event: any) => event.enrollment === recentEnrollment)
-    const activeEnrollment = teiData.enrollments?.find((enrollment: any) => enrollment?.status === 'ACTIVE')
-    const hasEventsInActiveEnrollment = Boolean(
-      activeEnrollment && teiData.registrationEvents?.some((event: any) => event.enrollment === activeEnrollment.enrollment)
-    )
 
     const enrollmentInitialValues = {
       ...teiData?.mainAttributesFormatted,
@@ -150,11 +143,10 @@ function ModalSearchAdmissionContent(props: ModalSearchAdmissionTemplateProps) {
     }
 
     if (onSelectTeiForEnrollment) {
+      // The enroll modal plans the enrollment (reuse, complete previous, conflict) from the
+      // student's enrollments when it is submitted.
       onSelectTeiForEnrollment({
         trackedEntityId: teiData.trackedEntity,
-        enrollmentId: activeEnrollment && !hasEventsInActiveEnrollment ? activeEnrollment.enrollment : undefined,
-        activeEnrollmentToComplete: activeEnrollment && hasEventsInActiveEnrollment ? activeEnrollment.enrollment : undefined,
-        activeEnrollmentEnrolledAt: activeEnrollment?.enrolledAt,
         initialValues: enrollmentInitialValues,
       })
       setOpen(false)

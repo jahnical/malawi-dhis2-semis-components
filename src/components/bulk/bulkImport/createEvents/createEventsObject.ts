@@ -1,5 +1,27 @@
 import { format } from "date-fns"
 import { selectedDataStoreKey, ProgramConfig } from 'dhis2-semis-types';
+import { enrollmentDates, statusForFinalResult, statusForNewEnrollment, type CalendarEntry } from 'dhis2-semis-functions';
+
+// What new enrollments need to get their status and dates (R2, R3)
+export interface EnrollmentLifecycleContext {
+    calendar: CalendarEntry[]
+    currentAcademicYear?: string
+    academicYearOptions?: { value?: string, code?: string, label?: string, displayName?: string }[]
+    // Admission imports create admission-only enrollments (no registration event)
+    admission?: boolean
+}
+
+// Value of one data element in an imported row, whatever sheet section it was read from
+const rowValue = (student: any, dataElement?: string) => {
+    if (!dataElement) return undefined
+    for (const section of Object.values(student ?? {})) {
+        if (!section || typeof section !== 'object') continue
+        for (const [key, value] of Object.entries(section as Record<string, any>)) {
+            if ((key === dataElement || key.split('.')[1] === dataElement) && value !== undefined && value !== null && value !== '') return value
+        }
+    }
+    return undefined
+}
 
 export function generateEventObjects(programStages: string[], data: any, programConfig: ProgramConfig) {
     let events: any = []
@@ -66,8 +88,13 @@ export function generateAttendanceEventObjects(programStages: string[], data: an
     return { attendanceEvents }
 }
 
-export function generateEnrollmentData(profile: string, programConfig: ProgramConfig, stagesToIgnore: string[], data: any, orgUnit: string, updating: boolean, dataStore: selectedDataStoreKey) {
+// New enrollments get their status from the academic year (past years COMPLETED, otherwise ACTIVE;
+// admissions ACTIVE) and occurredAt from the year's start. Updates leave status and dates out:
+// postEnrollments sends back the saved values.
+export function generateEnrollmentData(profile: string, programConfig: ProgramConfig, stagesToIgnore: string[], data: any, orgUnit: string, updating: boolean, dataStore: selectedDataStoreKey, lifecycle: EnrollmentLifecycleContext = { calendar: [] }) {
     let enrollments: any = []
+    const yearsNotInCalendar = new Set<string>()
+    const academicYearDataElement = dataStore?.registration?.academicYear
     const programStages = programConfig?.programStages.map((x) => {
         if (!stagesToIgnore.includes(x.id)) return { id: x.id, name: x.displayName }
     }).filter(x => x != undefined)
@@ -85,7 +112,8 @@ export function generateEnrollmentData(profile: string, programConfig: ProgramCo
             }
         }
 
-        let enrolledAtDate = format(new Date(), 'yyyy-MM-dd')
+        const today = format(new Date(), 'yyyy-MM-dd')
+        let sheetDate: string | undefined
 
         if (enrollmentDate) {
             try {
@@ -103,12 +131,24 @@ export function generateEnrollmentData(profile: string, programConfig: ProgramCo
                 }
 
                 if (!isNaN(parsedDate.getTime())) {
-                    enrolledAtDate = format(parsedDate, 'yyyy-MM-dd')
-                } else {
+                    sheetDate = format(parsedDate, 'yyyy-MM-dd')
                 }
             } catch (error) {
 
             }
+        }
+
+        const academicYear = lifecycle.admission || updating ? undefined : rowValue(student, academicYearDataElement)
+        let status: string = 'ACTIVE'
+        let enrolledAtDate = sheetDate ?? today
+        let occurredAtDate = sheetDate ?? today
+        if (academicYear) {
+            const years = { calendars: lifecycle.calendar, options: lifecycle.academicYearOptions }
+            status = statusForNewEnrollment(String(academicYear), String(lifecycle.currentAcademicYear ?? academicYear), years)
+            const dates = enrollmentDates({ calendar: lifecycle.calendar, academicYear: String(academicYear), enrollmentDate: sheetDate, options: lifecycle.academicYearOptions })
+            if (!dates.calendarFound) yearsNotInCalendar.add(String(academicYear))
+            enrolledAtDate = dates.enrolledAt ?? today
+            occurredAtDate = dates.occurredAt ?? today
         }
 
         for (const stage of programStages) {
@@ -162,17 +202,18 @@ export function generateEnrollmentData(profile: string, programConfig: ProgramCo
             events: events,
             program: programConfig.id,
             orgUnit: orgUnit,
-            status: "COMPLETED",
             attributes: att,
-            occurredAt: enrolledAtDate,
-            enrolledAt: enrolledAtDate,
-            ...(updating ? { enrollment: student.Ids.enrollment } : {})
+            ...(updating
+                ? { enrollment: student.Ids.enrollment }
+                : { status, occurredAt: occurredAtDate, enrolledAt: enrolledAtDate })
         })
     }
 
-    return { enrollments }
+    return { enrollments, yearsNotInCalendar: Array.from(yearsNotInCalendar) }
 }
 
+// Status after a final result: CANCELLED for a dropout value of the final-result status, otherwise
+// COMPLETED. Org unit and dates are left out: postEnrollments sends back the saved values.
 export function generateFinalResultData(
     programStages: string[],
     data: any,
@@ -180,34 +221,26 @@ export function generateFinalResultData(
     dataStore: any
 ) {
     let enrollmentUpdates: any = []
+    const finalResult = dataStore?.["final-result"]
+    const dropoutStatusValues: string[] = finalResult?.dropoutStatusValues ?? []
 
     for (const student of data) {
         if (!student?.Ids || !student?.Ids?.trackedEntity || !student?.Ids?.enrollment || !student?.Ids?.orgUnit) {
             throw new Error('Import error: This operation requires a bulk update file containing (Enrollment, Tracked Entity Id, School UID). Please ensure you are using the bulk update template for final results.');
         }
 
-        const { trackedEntity, enrollment, orgUnit } = student.Ids
-        let isDropout = false
-
-        for (const programStage of programStages) {
-            for (const key of Object.keys(student[programStage] || {})) {
-                const value = student[programStage][key]
-                if (value) {
-                    if (typeof value === 'string' && dataStore?.finalResult?.dropoutStatusValues?.includes(value)) {
-                        isDropout = true
-                    }
-                }
-            }
-        }
+        const { trackedEntity, enrollment } = student.Ids
+        const values = programStages.flatMap((programStage) => Object.entries(student[programStage] || {}))
+        // The final decision is the configured status column; without one, any dropout value counts
+        const decision = finalResult?.status
+            ? values.find(([key]) => key === finalResult.status || key.split('.')[1] === finalResult.status)?.[1]
+            : values.map(([, value]) => value).find((value) => statusForFinalResult(String(value ?? ''), dropoutStatusValues) === 'CANCELLED')
 
         enrollmentUpdates.push({
             enrollment,
             program: programConfig.id,
-            enrolledAt: format(new Date(), 'yyyy-MM-dd'),
-            orgUnit,
-            status: isDropout ? 'CANCELLED' : 'COMPLETED',
+            status: statusForFinalResult(decision === undefined || decision === null ? undefined : String(decision), dropoutStatusValues),
             trackedEntity,
-            occurredAt: format(new Date(), 'yyyy-MM-dd'),
         })
     }
 

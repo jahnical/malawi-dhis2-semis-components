@@ -2,7 +2,7 @@ import { importStrategy } from "../../../../types/bulk/bulkOperations";
 import { selectedDataStoreKey } from 'dhis2-semis-types';
 import { splitArrayIntoChunks } from "../../../../utils/common/splitArray";
 import { importSummary } from "../../../../utils/common/getImportSummary";
-import { formatTrackerError, useUploadEvents } from "dhis2-semis-functions";
+import { formatTrackerError, keepEnrollmentFields, useGetLearnerEnrollments, useUploadEvents, type ExistingEnrollment } from "dhis2-semis-functions";
 import { useGetEvents } from "dhis2-semis-functions";
 import { TranslationState } from "../../../..//schemas/translationsSchema";
 import { useRecoilValue } from "recoil";
@@ -10,6 +10,7 @@ import { useRecoilValue } from "recoil";
 export function postEnrollmentData({ setStats, setProgress, onError, setOpenProgress }: { setOpenProgress: (args: boolean) => void, setStats: (args: any) => void, setProgress: (rags: any) => void, onError: (args: string) => void }) {
     const { getEvents } = useGetEvents()
     const { uploadValues } = useUploadEvents()
+    const { getLearnerEnrollments } = useGetLearnerEnrollments()
     const i18n = useRecoilValue(TranslationState) as any
 
     function updateProgressF(buffer: number, progressParam: number, denominador: number) {
@@ -22,10 +23,10 @@ export function postEnrollmentData({ setStats, setProgress, onError, setOpenProg
 
     async function postEnrollments(
         enrollments: any[], excelData: any, importMode: "VALIDATE" | "COMMIT", program: string,
-        updating: boolean, dataStore: selectedDataStoreKey, orgUnit: string, updatingFR = false
+        updating: boolean, dataStore: selectedDataStoreKey, orgUnit: string, updatingFR = false, warnings: any[] = []
     ) {
         let copyData = [...enrollments]
-        let updatedStats: any = { stats: { ignored: 0, created: 0, updated: 0, total: 0 }, errorDetails: [], warningDetails: [], exceptions: [], byType: [] }
+        let updatedStats: any = { stats: { ignored: 0, created: 0, updated: 0, total: 0 }, errorDetails: [], warningDetails: [...warnings], exceptions: [], byType: [] }
         const updateProgress = (updating || updatingFR) ? 40 : 0
 
         if (updating) {
@@ -33,6 +34,27 @@ export function postEnrollmentData({ setStats, setProgress, onError, setOpenProg
                 return { tei: x?.Ids?.trackedEntity, orgUnit: x.Ids.orgUnit, enrollment: x.Ids.enrollment }
             })
             const socioEconomicsStage = dataStore?.["socio-economics"]?.programStage
+
+            // Updates never change an enrollment's org unit or dates, nor its status (a final result sets
+            // only the status), so send back what is saved
+            const saved = new Map<string, ExistingEnrollment>()
+            try {
+                for (const teiEnrollments of (await getLearnerEnrollments(teis.map((x: any) => x.tei), program)).values()) {
+                    for (const enrollment of teiEnrollments) saved.set(enrollment.enrollment, enrollment)
+                }
+            } catch (error: any) {
+                setOpenProgress(false)
+                onError(error)
+                return
+            }
+            copyData = copyData.map((enrollment: any) => {
+                const existing = saved.get(enrollment?.enrollment)
+                if (!existing) return enrollment
+                const kept = keepEnrollmentFields(existing)
+                return updatingFR
+                    ? { ...enrollment, orgUnit: kept.orgUnit, enrolledAt: kept.enrolledAt, occurredAt: kept.occurredAt }
+                    : { ...enrollment, ...kept }
+            })
 
             for (let index = 0; index < teis.length; index++) {
                 if (socioEconomicsStage && !updatingFR) {
