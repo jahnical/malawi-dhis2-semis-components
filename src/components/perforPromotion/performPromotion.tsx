@@ -44,8 +44,8 @@ export default function PerformPromotion({ selected, Form, loading, onSubmit }: 
                                     formFields={[
                                         {
                                             storyBook: false,
-                                            name: i18n.t("Student promotion"),
-                                            description: i18n.t("Student promotion"),
+                                            name: i18n.t("Learner promotion"),
+                                            description: i18n.t("Learner promotion"),
                                             fields: [
                                                 staticForm().registeringSchool,
                                                 ...enrollmentDetails,

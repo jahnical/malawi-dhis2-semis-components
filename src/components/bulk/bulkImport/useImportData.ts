@@ -178,7 +178,7 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                                     attributeID: studentIdAttr,
                                     pattern: attrConfig.trackedEntityAttribute.pattern,
                                     orgUnitId: orgUnit as unknown as string,
-                                    onError: () => onError(`Import error: Failed to generate student identifiers`)
+                                    onError: () => onError(`Import error: Failed to generate learner identifiers`)
                                 })
                                 let idIndex = 0
                                 for (const student of studentsData) {

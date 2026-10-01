@@ -8,7 +8,7 @@
     "WARNING": "WARNING",
     "rows will be affected": "rows will be affected",
     "No one will be able to access this program. Add some Organisation Units to the access list.": "No one will be able to access this program. Add some Organisation Units to the access list.",
-    "Student promotion": "Student promotion",
+    "Student promotion": "Learner promotion",
     "View history": "View history",
     "Fill in at least 1 attribute to search.": "Fill in at least 1 attribute to search.",
     "Results found for": "Results found for",
@@ -30,5 +30,6 @@
     "Previous Page": "Previous Page",
     "Next Page": "Next Page",
     "No data to display": "No data to display",
-    "Enrollment_Date": "Enrollment_Date"
+    "Enrollment_Date": "Enrollment_Date",
+    "Learner promotion": "Learner promotion"
 }
