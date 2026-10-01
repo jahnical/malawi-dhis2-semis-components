@@ -72,7 +72,7 @@ export default function AsssignFinalResult({ selected, Form }: { selected: any[]
                                         {
                                             storyBook: false,
                                             name: `${i18n.t('Final Results')}`,
-                                            description: `${i18n.t('Student final result')}`,
+                                            description: `${i18n.t('Learner final result')}`,
                                             fields: dataElements
                                         }
                                     ]}

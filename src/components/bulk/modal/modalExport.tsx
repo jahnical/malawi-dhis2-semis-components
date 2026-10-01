@@ -41,7 +41,7 @@ export default function ModalExportEmpty({ open, setOpen, onSubmit, module, Form
                         {
                             "name": `${i18n.t("Details")}`,
                             "storyBook": false,
-                            "description": `${i18n.t("This file will allow the import of new student data into the system.")}`,
+                            "description": `${i18n.t("This file will allow the import of new learner data into the system.")}`,
                             "fields": [
                                 ...exportFields(module, filters)
                             ]

@@ -46,23 +46,23 @@ const staticForm = () => {
     numberOfStudents: {
       required: false,
       name: "studentsNumber",
-      labelName: "Number of Students",
+      labelName: "Number of Learners",
       valueType: "NUMBER",
       options: undefined,
       disabled: false,
       pattern: "",
       visible: true,
-      description: "Number of Students",
+      description: "Number of Learners",
       searchable: false,
       error: false,
       programStage: "",
       content: "",
       id: "studentsNumber",
-      displayName: "Number of Students",
-      header: "Number of Students",
+      displayName: "Number of Learners",
+      header: "Number of Learners",
       type: VariablesTypes.DataElement,
       assignedValue: undefined,
-      placeholder: "Maximum number of students supported for each file: 1000"
+      placeholder: "Maximum number of learners supported for each file: 1000"
     }
   }
 }
