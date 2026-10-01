@@ -50,11 +50,19 @@ interface RenderHeaderProps {
     sortable: boolean
     showRowActions?: boolean
     selectedAll?: boolean
+    /** Column ids to freeze while the rest of the table scrolls horizontally. Checkbox and row index are frozen automatically when present. */
+    stickyColumnIds?: string[]
+    /** Shows a divider after the last frozen column - only pass true when there's actually hidden content to scroll to. */
+    showStickyDivider?: boolean
 }
 
 interface RenderRowsProps {
     showRowIndex?: boolean
     headerData?: CustomAttributeProps[]
+    /** Column ids to freeze while the rest of the table scrolls horizontally. Checkbox and row index are frozen automatically when present. */
+    stickyColumnIds?: string[]
+    /** Shows a divider after the last frozen column - only pass true when there's actually hidden content to scroll to. */
+    showStickyDivider?: boolean
     rowsData: Record<string, any>[]
     searchActions?: boolean
     loading?: boolean
@@ -149,6 +157,8 @@ interface TableRenderProps {
     enableInactiveRowSelection?: boolean
     enrollmentCheckAcademicYear?: string
     ignoreOrgUnitForEnrollmentCheck?: boolean
+    /** Column ids to freeze while the rest of the table scrolls horizontally. Checkbox and row index are frozen automatically when present. */
+    stickyColumnIds?: string[]
 }
 
 

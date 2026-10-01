@@ -25,6 +25,7 @@ import { breakpoints } from '../../../constants/breakpoints';
 import { useRecoilValue } from 'recoil';
 import { TranslationState } from '../../../schemas/translationsSchema';
 import { useConfig } from '@dhis2/app-runtime';
+import { getStickyOffsets, getStickyStyle } from '../../../utils/table/stickyColumns';
 
 export const useStyles = () => {
     const theme = useTheme();
@@ -96,8 +97,12 @@ function RenderRows(props: RenderRowsProps): React.ReactElement {
     const { academicYear, sectionType, school } = urlParameters
     const { registration } = useDataStoreKey({ sectionType: sectionType as unknown as "student" | "staff" })
     const [showEnrollments, setShowEnrollments] = useState<string>()
-    const { headerData, rowsData = [], pagination, searchActions, showRowIndex, loading, viewPortWidth, selectedOU, showRowActions, rowAction, displayType, programConfig, inactiveRowMessage, onRowClick, indeterminate, isCheckbox, onChange, selected, enableInactiveRowSelection, enrollmentCheckAcademicYear, ignoreOrgUnitForEnrollmentCheck = false } = props;
+    const { headerData, rowsData = [], pagination, searchActions, showRowIndex, loading, viewPortWidth, selectedOU, showRowActions, rowAction, displayType, programConfig, inactiveRowMessage, onRowClick, indeterminate, isCheckbox, onChange, selected, enableInactiveRowSelection, enrollmentCheckAcademicYear, ignoreOrgUnitForEnrollmentCheck = false, stickyColumnIds, showStickyDivider } = props;
     const i18n = useRecoilValue(TranslationState) as any
+
+    const stickyOffsets = stickyColumnIds && stickyColumnIds.length > 0
+        ? getStickyOffsets({ isCheckbox, showRowIndex, columns: headerData, stickyColumnIds })
+        : new Map()
 
     const isSelected = (row: any): boolean => selected?.find((item: any) => deepEqual(item, row));
 
@@ -121,7 +126,7 @@ function RenderRows(props: RenderRowsProps): React.ReactElement {
             <>
                 {isCheckbox &&
                     <RowCell
-                        style={{ ...classes.cell, ...classes.bodyCell }}
+                        style={{ ...classes.cell, ...classes.bodyCell, ...getStickyStyle(stickyOffsets, 'checkbox', 1, showStickyDivider) }}
                     >
                         <Checkbox
                             disabled={disabled}
@@ -167,7 +172,7 @@ function RenderRows(props: RenderRowsProps): React.ReactElement {
             <>
                 {showRowIndex &&
                     <RowCell
-                        style={{ ...classes.cell, ...classes.bodyCell }}
+                        style={{ ...classes.cell, ...classes.bodyCell, ...getStickyStyle(stickyOffsets, 'rowIndex', 1, showStickyDivider) }}
                     >
                         {(pagination?.page - 1) * pagination?.pageSize + index + 1}
                     </RowCell>
@@ -197,7 +202,7 @@ function RenderRows(props: RenderRowsProps): React.ReactElement {
                                     headerData?.filter((x: any) => x.visible)?.map((column: any) => (
                                         <RowCell
                                             key={column.id}
-                                            style={{ ...classes.cell, ...classes.bodyCell }}
+                                            style={{ ...classes.cell, ...classes.bodyCell, ...getStickyStyle(stickyOffsets, column.id, 1, showStickyDivider) }}
                                             onClick={() => onRowClick ? onRowClick(row) : {}}
                                         >
                                             {

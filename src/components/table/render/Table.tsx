@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Center as CenteredContent, CircularLoader } from "@dhis2/ui";
 import RenderHeader from './RenderHeader'
 import WithBorder from '../../template/WithBorder';
@@ -95,12 +95,39 @@ function Table(props: TableRenderProps): React.ReactElement {
         beforeSettings,
         enrollmentCheckAcademicYear,
         ignoreOrgUnitForEnrollmentCheck,
+        stickyColumnIds,
     } = props
 
     const classes = useStyles()
     const [filteredHeaders, setFilteredHeaders] = useState<CustomAttributeProps[]>([])
     const filtered = enableInactiveRowSelection ? tableData : tableData.filter(x => !checkCanceled(x.status))
     const selectableFilteredRows = filtered.filter((x: any) => !x.disableSelection)
+
+    // Shows the sticky-column divider only once something is actually scrolled behind the
+    // frozen columns - not just because the table could scroll, and not at rest, when every
+    // column (frozen or not) is still sitting side by side with nothing tucked under yet.
+    const tableContainerRef = useRef<HTMLDivElement>(null)
+    const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false)
+    const [isScrolled, setIsScrolled] = useState(false)
+
+    useEffect(() => {
+        const el = tableContainerRef.current
+        if (!el || !stickyColumnIds?.length) return
+
+        const checkOverflow = () => setHasHorizontalOverflow(el.scrollWidth > el.clientWidth)
+        checkOverflow()
+
+        const onScroll = () => setIsScrolled(el.scrollLeft > 0)
+        onScroll()
+
+        const observer = new ResizeObserver(checkOverflow)
+        observer.observe(el)
+        el.addEventListener('scroll', onScroll)
+        return () => {
+            observer.disconnect()
+            el.removeEventListener('scroll', onScroll)
+        }
+    }, [tableData, columns, stickyColumnIds])
 
     const onPageChange = (newPage: number) => setPagination({ ...pagination, page: newPage })
 
@@ -168,6 +195,7 @@ function Table(props: TableRenderProps): React.ReactElement {
                         }
                     />}
                     <div
+                        ref={tableContainerRef}
                         style={classes.tableContainer}
                     >
                         <TableComponent>
@@ -186,6 +214,8 @@ function Table(props: TableRenderProps): React.ReactElement {
                                         onChange={onCheckboxChange}
                                         isCheckbox={selectable}
                                         selectedAll={!loading && selectableFilteredRows?.length === selected?.length}
+                                        stickyColumnIds={stickyColumnIds}
+                                        showStickyDivider={hasHorizontalOverflow && isScrolled}
                                     />
                                 }
                                 {!loading && (
@@ -210,6 +240,8 @@ function Table(props: TableRenderProps): React.ReactElement {
                                         enableInactiveRowSelection={enableInactiveRowSelection}
                                         enrollmentCheckAcademicYear={enrollmentCheckAcademicYear}
                                         ignoreOrgUnitForEnrollmentCheck={ignoreOrgUnitForEnrollmentCheck}
+                                        stickyColumnIds={stickyColumnIds}
+                                        showStickyDivider={hasHorizontalOverflow && isScrolled}
                                     />
                                 )}
                             </>

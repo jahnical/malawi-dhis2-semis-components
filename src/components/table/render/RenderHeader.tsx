@@ -9,6 +9,7 @@ import { useTheme } from '@mui/material/styles';
 import { breakpoints } from '../../../constants/breakpoints';
 import { TranslationState } from '../../../schemas/translationsSchema';
 import { useRecoilValue } from 'recoil';
+import { getStickyOffsets, getStickyStyle } from '../../../utils/table/stickyColumns';
 
 export const useStyles = () => {
     const theme = useTheme();
@@ -55,9 +56,13 @@ export const useStyles = () => {
 
 
 function RenderHeader(props: RenderHeaderProps): React.ReactElement {
-    const { selectedAll, rowsHeader = [], showRowIndex, order, orderBy, createSortHandler, isCheckbox, checked, indeterminate, onChange, sortable, showRowActions } = props
+    const { selectedAll, rowsHeader = [], showRowIndex, order, orderBy, createSortHandler, isCheckbox, checked, indeterminate, onChange, sortable, showRowActions, stickyColumnIds, showStickyDivider } = props
     const classes = useStyles()
     const i18n = useRecoilValue(TranslationState) as any
+
+    const stickyOffsets = stickyColumnIds && stickyColumnIds.length > 0
+        ? getStickyOffsets({ isCheckbox, showRowIndex, columns: rowsHeader, stickyColumnIds })
+        : new Map()
 
     // Helper to get header text color with fallback
     const getHeaderColor = (column: any) => {
@@ -72,7 +77,7 @@ function RenderHeader(props: RenderHeaderProps): React.ReactElement {
         return (
             <HeaderCell
                 key={column.id}
-                style={{ ...classes.cell, ...classes.headerCell, color: headerColor }}
+                style={{ ...classes.cell, ...classes.headerCell, color: headerColor, ...getStickyStyle(stickyOffsets, column.id, 2, showStickyDivider) }}
             >
                 {
                     sortable && column.sortable !== false ?
@@ -105,7 +110,7 @@ function RenderHeader(props: RenderHeaderProps): React.ReactElement {
             >
                 {isCheckbox &&
                     <HeaderCell
-                        style={{ ...classes.cell, ...classes.headerCell }}
+                        style={{ ...classes.cell, ...classes.headerCell, ...getStickyStyle(stickyOffsets, 'checkbox', 2, showStickyDivider) }}
                     >
                         <Checkbox
                             indeterminate={indeterminate}
@@ -116,7 +121,7 @@ function RenderHeader(props: RenderHeaderProps): React.ReactElement {
                 }
                 {showRowIndex &&
                     <HeaderCell
-                        style={{ ...classes.cell, ...classes.headerCell }}
+                        style={{ ...classes.cell, ...classes.headerCell, ...getStickyStyle(stickyOffsets, 'rowIndex', 2, showStickyDivider) }}
                     >
                         <span>#</span>
                     </HeaderCell>
