@@ -9,7 +9,7 @@ import { generateFile } from './dataExporter/fileGenerator';
 import { generateEmptyRows } from '../../../utils/common/generateData';
 import { generateAndReserveIds } from './generateIds/generateAndReserve';
 import { areParamsValid } from '../../../utils/common/validateRequiredParams';
-import { useGetEvents, useIncrementDays, useUrlParams } from "dhis2-semis-functions";
+import { calendarForAcademicYear, useGetEvents, useIncrementDays, useUrlParams } from "dhis2-semis-functions";
 import { useSchoolCalendarKey } from "../../../hooks/dataStore/useSchoolCalendarKey";
 import { SchoolCalendarType } from "../../../types/dataStore/schoolCalendar";
 
@@ -29,11 +29,12 @@ export function useExportData(props: ExportData) {
     const { getData } = getCommonSheetData({ ...props, onError })
     const { getAdmissionData } = getAdmissionSheetData({ ...props, onError })
     const { urlParameters } = useUrlParams()
-    const { schoolName: orgUnitName, school: orgUnit } = urlParameters
+    const { schoolName: orgUnitName, school: orgUnit, academicYear, grade } = urlParameters
     const { getEvents } = useGetEvents()
     const { generate } = generateAndReserveIds()
     const { defaults, schoolCalendar } = useSchoolCalendarKey()
-    const selectedCalendar = schoolCalendar?.find(x => x?.academicYear?.code == defaults?.academicYear)
+    // School days come from the calendar of the academic year selected in the header (not always the current year)
+    const selectedCalendar = calendarForAcademicYear(schoolCalendar, academicYear, defaults?.academicYear)
     const { excelGenerator } = generateFile({ unavailableDays: isSchoolDay as unknown as (date: Date, config: SchoolCalendarType) => boolean, config: selectedCalendar })
     const { getHeaders } = generateHeaders({
         module,
@@ -42,12 +43,15 @@ export function useExportData(props: ExportData) {
         selectedSectionDataStore,
         sectionType,
         withSocioEconomics,
-        empty
+        empty,
+        gradeCode: grade ?? undefined,
     })
     const { msg, valid } = areParamsValid({ ...props })
     const { getDate } = useIncrementDays()
 
-    async function exportData({ fileName, numberOfEmptyRows, startDate, endDate }: { fileName?: string, startDate?: any, endDate?: any, numberOfEmptyRows?: number }) {
+    // `signal`: aborted when the user cancels; the export then stops at the next step and saves no file
+    async function exportData({ fileName, numberOfEmptyRows, startDate, endDate, signal }: { fileName?: string, startDate?: any, endDate?: any, numberOfEmptyRows?: number, signal?: AbortSignal }) {
+        const cancelled = () => signal?.aborted === true
         if (!valid) onError(`Export error: ${msg}`)
         else {
 
@@ -67,9 +71,12 @@ export function useExportData(props: ExportData) {
                     }
                 }
 
+                if (cancelled()) return
+
                 if (module != Modules.Enrollment && module != Modules.Admission) {
                     for (let teisCounter = 0; teisCounter < data?.length; teisCounter++) {
                         for (let a = 0; a < stagesToExport?.length; a++) {
+                            if (cancelled()) return
                             await getEvents({
                                 program: selectedSectionDataStore?.program as unknown as string,
                                 ...(module === Modules.Attendance ? {
@@ -112,6 +119,7 @@ export function useExportData(props: ExportData) {
                     let ids: any = {}
 
                     for (const attr of attributesToGenerate) {
+                        if (cancelled()) return
                         await generate({
                             studentsNumber: numberOfEmptyRows,
                             attributeID: attr?.attributeID,
@@ -131,12 +139,14 @@ export function useExportData(props: ExportData) {
                     data = generateEmptyRows(numberOfEmptyRows, formatedHeaders, ids, orgUnitName)
                 }
 
+                if (cancelled()) return
+
                 try {
                     await excelGenerator({ headers: formatedHeaders, rows: data, filters, fileName, metadata, module, empty, defaultLockedHeaders })
                 } catch (error) {
                     onError(`Export error: Occurred an error while generating file! - ${error}`)
                 } finally {
-                    setProgress((progress: any) => ({ ...progress, progress: 100, buffer: 100 }))
+                    if (!cancelled()) setProgress((progress: any) => ({ ...progress, progress: 100, buffer: 100 }))
                 }
             }
         }

@@ -1,3 +1,4 @@
+import { isNonSchoolDayPlaceholder } from "../../../../utils/constants/nonSchoolDay";
 import React from "react";
 import { ButtonStrip } from "@dhis2/ui";
 import SummaryCard from "../../../card/SummaryCard";
@@ -18,7 +19,7 @@ function SummaryCards({ validRecs, invalidRecs, doneProcessing, stats, module }:
             } else {
 
                 const soma = validRecs?.reduce((acc: number, item: any) => {
-                    return acc + Object.values(item?.Attendance)?.filter((v: string) => v?.length > 0 && v != "Non School Day")?.length;
+                    return acc + Object.values(item?.Attendance)?.filter((v: string) => v?.length > 0 && !isNonSchoolDayPlaceholder(v))?.length;
                 }, 0)
 
                 return soma

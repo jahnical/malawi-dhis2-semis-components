@@ -6,6 +6,7 @@ import { formatTrackerError, keepEnrollmentFields, useGetLearnerEnrollments, use
 import { useGetEvents } from "dhis2-semis-functions";
 import { TranslationState } from "../../../..//schemas/translationsSchema";
 import { useRecoilValue } from "recoil";
+import { uploadLearnersAtomically } from "./uploadLearners";
 
 export function postEnrollmentData({ setStats, setProgress, onError, setOpenProgress }: { setOpenProgress: (args: boolean) => void, setStats: (args: any) => void, setProgress: (rags: any) => void, onError: (args: string) => void }) {
     const { getEvents } = useGetEvents()
@@ -106,6 +107,25 @@ export function postEnrollmentData({ setStats, setProgress, onError, setOpenProg
                     }]
                 }
             }
+        }
+
+        // Saving: one learner per request with atomicMode ALL, so a learner is never created (or
+        // updated) without its enrollment. A dry run validates in chunks; the report is per object anyway.
+        if (importMode === "COMMIT" && !updatingFR) {
+            const { reports, failures } = await uploadLearnersAtomically({
+                items: copyData,
+                upload: (payload) => uploadValues(payload, importMode, importStrategy.CREATE, { silent: true, atomicMode: "ALL" }),
+                onEach: () => updateProgressF((90 + 5 - updateProgress), (90 - updateProgress), copyData.length),
+            })
+            for (const report of reports) updatedStats = importSummary(report, updatedStats)
+            if (failures.length > 0) {
+                updatedStats = {
+                    ...updatedStats,
+                    exceptions: failures.map(({ error }) => ({ [i18n.t("Error message")]: formatTrackerError(error) })),
+                }
+            }
+            setStats(updatedStats)
+            return
         }
 
         const chunks = splitArrayIntoChunks(copyData, 50);

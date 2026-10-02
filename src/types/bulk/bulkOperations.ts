@@ -128,6 +128,8 @@ interface GenerateHeaders {
     isSchoolDay?: (date: Date) => boolean
     module: string
     empty: boolean
+    /** Standard (grade option code) selected in the header; decides which subjects the performance template has */
+    gradeCode?: string
 }
 
 interface excelProps {

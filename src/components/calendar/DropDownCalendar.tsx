@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { initialCalendarDate } from './calendarRange';
 import Calendar from './Calendar';
 import { format } from 'date-fns';
 import style from './datepicker.module.css'
@@ -10,7 +11,10 @@ import { TranslationState } from '../../schemas/translationsSchema';
 
 export default function DropDownCalendar(props: DropDownCalendarProps) {
     const { setValue, dateDisabler, label, icon, value, config } = props
-    const [localDateSelected, setlocalDateSelected] = useState<{ selectedDate: Date }>({ selectedDate: new Date() })
+    // Open on the academic year selected in the header (its config), not on today's date
+    const opening = () => ({ selectedDate: initialCalendarDate(config, dateDisabler as any, (value as any)?.selectedDate) })
+    const [localDateSelected, setlocalDateSelected] = useState<{ selectedDate: Date }>(opening)
+    useEffect(() => { setlocalDateSelected(opening()) }, [config?.academicYear?.startDate, config?.academicYear?.endDate])
     const [anchorCalendar, setAnchorCalendat] = useState<null | HTMLElement>(null);
     const [open, setOpen] = useState<boolean>(false);
     const i18n = useRecoilValue(TranslationState) as any
@@ -22,7 +26,7 @@ export default function DropDownCalendar(props: DropDownCalendarProps) {
 
     return (
         <>
-            <span onClick={(event: any) => { setAnchorCalendat(event.currentTarget), setOpen(true) }}>
+            <span onClick={(event: any) => { setlocalDateSelected(opening()); setAnchorCalendat(event.currentTarget), setOpen(true) }}>
                 <Dhis2Btn
                     icon={icon}
                 >

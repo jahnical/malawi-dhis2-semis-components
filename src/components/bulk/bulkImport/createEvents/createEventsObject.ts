@@ -1,3 +1,4 @@
+import { isNonSchoolDayPlaceholder } from "../../../../utils/constants/nonSchoolDay";
 import { format } from "date-fns"
 import { selectedDataStoreKey, ProgramConfig } from 'dhis2-semis-types';
 import { enrollmentDates, statusForFinalResult, statusForNewEnrollment, type CalendarEntry } from 'dhis2-semis-functions';
@@ -23,7 +24,8 @@ const rowValue = (student: any, dataElement?: string) => {
     return undefined
 }
 
-export function generateEventObjects(programStages: string[], data: any, programConfig: ProgramConfig) {
+export function generateEventObjects(programStages: string[], data: any, programConfig: ProgramConfig,
+    dateFor: (programStageId?: string) => string = () => format(new Date(), 'yyyy-MM-dd')) {
     let events: any = []
 
     for (const student of data) {
@@ -33,7 +35,7 @@ export function generateEventObjects(programStages: string[], data: any, program
             let eventProperties: any = { dataValues: [], program: programConfig.id }
             const programStageID = programConfig.programStages.find(x => x.displayName == programStage)?.id
 
-            for (const key of Object.keys(student[programStage])) {
+            for (const key of Object.keys(student[programStage] ?? {})) {
                 if (student[programStage][key]) {
                     eventProperties.dataValues.push({
                         dataElement: key.split('.')[1],
@@ -42,12 +44,16 @@ export function generateEventObjects(programStages: string[], data: any, program
                 }
             }
 
+            // A row left blank for this stage (no result yet, no marks) creates no event
+            if (eventProperties.dataValues.length === 0) continue
+
             events.push({
                 trackedEntity: trackedEntity,
                 ...rest,
                 ...eventProperties,
                 programStage: programStageID,
-                occurredAt: format(new Date(), 'yyyy-MM-dd')
+                // For a new event; an existing event keeps its own date (postEvents.ts)
+                occurredAt: dateFor(programStageID)
             })
         }
     }
@@ -66,7 +72,9 @@ export function generateAttendanceEventObjects(programStages: string[], data: an
 
         for (const programStage of programStages) {
             for (const key of Object.keys(student[programStage])) {
-                if (student[programStage][key]) {
+                const value = student[programStage][key]
+                // Empty cells and the export's "Non School Day" placeholder are not attendance records
+                if (value && !isNonSchoolDayPlaceholder(value)) {
                     attendanceEvents.push({
                         occurredAt: key,
                         trackedEntity,
@@ -76,7 +84,7 @@ export function generateAttendanceEventObjects(programStages: string[], data: an
                         dataValues: [
                             {
                                 dataElement: dataStore.attendance.status,
-                                value: student[programStage][key]
+                                value
                             }
                         ]
                     })
@@ -235,6 +243,9 @@ export function generateFinalResultData(
         const decision = finalResult?.status
             ? values.find(([key]) => key === finalResult.status || key.split('.')[1] === finalResult.status)?.[1]
             : values.map(([, value]) => value).find((value) => statusForFinalResult(String(value ?? ''), dropoutStatusValues) === 'CANCELLED')
+
+        // No decision in the file for this learner: leave the enrollment as it is (it used to be completed)
+        if (decision === undefined || decision === null || String(decision).trim() === "") continue
 
         enrollmentUpdates.push({
             enrollment,
