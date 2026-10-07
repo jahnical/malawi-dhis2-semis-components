@@ -1,7 +1,7 @@
 import { isNonSchoolDayPlaceholder } from "../../../../utils/constants/nonSchoolDay";
 import { format } from "date-fns"
 import { selectedDataStoreKey, ProgramConfig } from 'dhis2-semis-types';
-import { enrollmentDates, statusForFinalResult, statusForNewEnrollment, type CalendarEntry } from 'dhis2-semis-functions';
+import { enrollmentDates, statusForFinalResult, statusForNewEnrollment, calendarForAcademicYear, eventDateResolver, type CalendarEntry } from 'dhis2-semis-functions';
 
 // What new enrollments need to get their status and dates (R2, R3)
 export interface EnrollmentLifecycleContext {
@@ -159,6 +159,15 @@ export function generateEnrollmentData(profile: string, programConfig: ProgramCo
             occurredAtDate = dates.occurredAt ?? today
         }
 
+        // Term and final-result events are dated by the school calendar of the row's academic year
+        // (term end, year end, never after today); the registration event keeps the enrollment date
+        const stageDate = eventDateResolver(
+            academicYear ? calendarForAcademicYear(lifecycle.calendar as any[], String(academicYear)) as any : undefined,
+            (dataStore as any)?.performance?.programStages?.map((x: any) => x.programStage) ?? [],
+            today
+        )
+        const registrationStage = (dataStore as any)?.registration?.programStage
+
         for (const stage of programStages) {
             let dataValues: any = []
 
@@ -186,7 +195,7 @@ export function generateEnrollmentData(profile: string, programConfig: ProgramCo
                     orgUnit: orgUnit,
                     dataValues: dataValues,
                     status: "ACTIVE",
-                    occurredAt: enrolledAtDate,
+                    occurredAt: !academicYear || stage.id === registrationStage ? enrolledAtDate : stageDate(stage.id),
                     programStage: stage.id,
                     ...(updating ? { trackedEntity: student?.Ids?.trackedEntity } : {})
                 })

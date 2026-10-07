@@ -57,15 +57,19 @@ export function postEnrollmentData({ setStats, setProgress, onError, setOpenProg
                     : { ...enrollment, ...kept }
             })
 
-            for (let index = 0; index < teis.length; index++) {
+            // One entry per enrollment being saved. Learners without changes (for example a final result
+            // left blank) are not in copyData, so it can be shorter than the file: pair each entry with
+            // its own learner instead of with the row at the same position
+            for (let index = 0; index < copyData.length; index++) {
+                const tei = teis.find((x: any) => x.enrollment === copyData[index]?.enrollment) ?? teis[index]
                 if (socioEconomicsStage && !updatingFR) {
                     await getEvents({
                         program,
-                        orgUnit: teis[index]?.orgUnit,
+                        orgUnit: tei?.orgUnit,
                         orgUnitMode: "SELECTED",
                         programStage: socioEconomicsStage,
                         fields: "event,trackedEntity,enrollment,dataValues[dataElement,value]",
-                        trackedEntities: teis[index]?.tei,
+                        trackedEntities: tei?.tei,
                         paging: false
                     }).then((resp: any[]) => {
                         let thisTeiEvent = resp.find(x => x.enrollment === copyData[index].enrollment)
@@ -76,13 +80,13 @@ export function postEnrollmentData({ setStats, setProgress, onError, setOpenProg
                                 ...rest,
                                 events: [...(thisTeiEvent ? [{ ...copyData[index].events[0], event: thisTeiEvent.event }] : [])]
                             }],
-                            orgUnit: teis[index]?.orgUnit,
-                            trackedEntity: teis[index]?.tei,
+                            orgUnit: tei?.orgUnit,
+                            trackedEntity: tei?.tei,
                             trackedEntityType: dataStore.trackedEntityType,
                             attributes: attributes
                         }
 
-                        updateProgressF(updateProgress + 5, updateProgress, teis.length)
+                        updateProgressF(updateProgress + 5, updateProgress, copyData.length)
                     }).catch((error) => {
                         setOpenProgress(false)
                         onError(error)
@@ -92,7 +96,7 @@ export function postEnrollmentData({ setStats, setProgress, onError, setOpenProg
                     copyData[index] = updatingFR ? { ...rest, events: [] } :
                         { enrollments: [{ ...rest, events: [] }] }
 
-                    updateProgressF(updateProgress + 5, updateProgress, teis.length)
+                    updateProgressF(updateProgress + 5, updateProgress, copyData.length)
                 }
             }
         } else {
@@ -107,6 +111,12 @@ export function postEnrollmentData({ setStats, setProgress, onError, setOpenProg
                     }]
                 }
             }
+        }
+
+        // Nothing to save (e.g. a final result file with no decisions): nothing to send
+        if (copyData.length === 0) {
+            setStats(updatedStats)
+            return
         }
 
         // Saving: one learner per request with atomicMode ALL, so a learner is never created (or

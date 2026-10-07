@@ -68,3 +68,12 @@ test("final results: a learner without a decision gets no event and no enrollmen
     const { enrollmentUpdates } = generateFinalResultData(["Final result"], rows, program, { "final-result": { status: "FS", dropoutStatusValues: ["Dropout"] } })
     expect(enrollmentUpdates.map((e: any) => [e.enrollment, e.status])).toEqual([["EN1", "COMPLETED"], ["EN3", "CANCELLED"]])
 })
+
+test("new enrollments: the final-result placeholder is dated by the year's calendar, registration by the enrollment date", () => {
+    const config: any = { id: "P1", programStages: [{ id: "REG", displayName: "Registration" }, { id: "FINAL", displayName: "Final result" }] }
+    const store: any = { ...dataStore, performance: { programStages: [{ programStage: "T1" }, { programStage: "T2" }] } }
+    const cal = [{ academicYear: { code: "2024/2025", startDate: "2024-09-02", endDate: "2025-07-18" }, classPeriods: [{ startDate: "2025-01-06", endDate: "2025-04-04" }, { startDate: "2024-09-02", endDate: "2024-12-13" }] }]
+    const { enrollments } = generateEnrollmentData("Student profile", config, [], [row("2024/2025", { enrollmentDate: "2024-10-01" })], "S1", false, store, { calendar: cal, currentAcademicYear: "2025/2026" })
+    const dates = Object.fromEntries(enrollments[0].events.map((e: any) => [e.programStage, e.occurredAt]))
+    expect(dates).toEqual({ REG: "2024-10-01", FINAL: "2025-07-18" })
+})

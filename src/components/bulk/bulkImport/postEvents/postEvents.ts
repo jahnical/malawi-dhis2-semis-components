@@ -44,9 +44,10 @@ export function postValues({ setStats, setProgress, onError, setOpenProgress }: 
                 }).then((resp: any) => {
                     const existing = resp.find((x: any) => x.enrollment === enrollment && x.programStage == stage)
                     const index = copyData.findIndex(x => x.enrollment === enrollment && x.programStage == stage)
-                    // Updating an existing event keeps its id and its own date
+                    // Updating an existing event keeps its id; its date is set from the school calendar
+                    // (term end for marks, year end for a final result), not the enrollment date it was created with
                     if (index > -1 && existing?.event) {
-                        copyData[index] = { ...copyData[index], event: existing.event, ...(existing.occurredAt ? { occurredAt: String(existing.occurredAt).slice(0, 10) } : {}) }
+                        copyData[index] = { ...copyData[index], event: existing.event }
                     }
 
                     updateProgressF(20, 17, excelData.mapping.length * programStages.length)

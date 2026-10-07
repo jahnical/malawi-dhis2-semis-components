@@ -92,6 +92,7 @@ export default function ProcessImport(props: importData) {
                 progress={progress}
                 open={openPogress}
                 setOpen={setOpenProgress}
+                module={module as unknown as string}
             />}
         </div>
     )

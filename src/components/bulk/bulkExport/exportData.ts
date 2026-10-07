@@ -13,6 +13,15 @@ import { calendarForAcademicYear, useGetEvents, useIncrementDays, useUrlParams }
 import { useSchoolCalendarKey } from "../../../hooks/dataStore/useSchoolCalendarKey";
 import { SchoolCalendarType } from "../../../types/dataStore/schoolCalendar";
 
+// Enrollment ids per events request: keeps the URL short (about 12 characters each)
+const ENROLLMENTS_PER_REQUEST = 50
+
+function chunkRows<T>(rows: T[], size: number): T[][] {
+    const chunks: T[][] = []
+    for (let i = 0; i < rows.length; i += size) chunks.push(rows.slice(i, i + size))
+    return chunks
+}
+
 export function useExportData(props: ExportData) {
     const {
         programConfig,
@@ -74,45 +83,51 @@ export function useExportData(props: ExportData) {
                 if (cancelled()) return
 
                 if (module != Modules.Enrollment && module != Modules.Admission) {
-                    for (let teisCounter = 0; teisCounter < data?.length; teisCounter++) {
-                        for (let a = 0; a < stagesToExport?.length; a++) {
+                    // One request per stage and group of enrollments (not per learner and stage): the events
+                    // of the learners' enrollments in this academic year only. With a class of 40 and 4 stages
+                    // this is 4 requests instead of 160, and other years' events are never downloaded.
+                    const rows: any[] = data ?? []
+                    const groups = chunkRows(rows.filter((row: any) => row?.enrollment), ENROLLMENTS_PER_REQUEST)
+                    const steps = Math.max(1, stagesToExport?.length * groups.length)
+                    for (const stage of stagesToExport ?? []) {
+                        const byEnrollment = new Map<string, any[]>()
+                        for (const group of groups) {
                             if (cancelled()) return
-                            await getEvents({
-                                program: selectedSectionDataStore?.program as unknown as string,
-                                ...(module === Modules.Attendance ? {
-                                    occurredAfter: startDate,
-                                    occurredBefore: getDate({ selectedDate: new Date(endDate) }),
-                                } : {}),
-                                orgUnit,
-                                orgUnitMode: "SELECTED",
-                                programStage: stagesToExport?.[a],
-                                fields: "event,trackedEntity,occurredAt,enrollment,dataValues[dataElement,value]",
-                                trackedEntities: data?.[teisCounter]?.trackedEntity,
-                                paging: false
-                            }).then((resp) => {
-                                const events = resp?.filter((x: any) => x.enrollment === data?.[teisCounter]?.enrollment)
-                                const increment = (40 / data?.length) / stagesToExport?.length;
-                                const bufferIncrement = (41 / data?.length) / stagesToExport?.length;
-
-                                data[teisCounter] = {
-                                    ...data[teisCounter], ...formatSheetData({
-                                        module: module,
-                                        stageId: stagesToExport?.[a],
-                                        events: events,
-                                        dataStore: selectedSectionDataStore as unknown as selectedDataStoreKey
-                                    })
+                            try {
+                                const resp = await getEvents({
+                                    program: selectedSectionDataStore?.program as unknown as string,
+                                    ...(module === Modules.Attendance ? {
+                                        occurredAfter: startDate,
+                                        occurredBefore: getDate({ selectedDate: new Date(endDate) }),
+                                    } : {}),
+                                    orgUnit,
+                                    orgUnitMode: "SELECTED",
+                                    programStage: stage,
+                                    fields: "event,trackedEntity,occurredAt,enrollment,dataValues[dataElement,value]",
+                                    enrollments: group.map((row: any) => row.enrollment),
+                                    paging: false
+                                })
+                                for (const event of resp ?? []) {
+                                    const list = byEnrollment.get(event.enrollment) ?? []
+                                    list.push(event)
+                                    byEnrollment.set(event.enrollment, list)
                                 }
-
-                                setProgress((prev: any) => ({
-                                    ...prev,
-                                    progress: prev.progress + increment,
-                                    buffer: prev.buffer + bufferIncrement
-                                }));
-
-                            }).catch((error) => {
+                            } catch (error) {
                                 setProgress((progress: any) => ({ ...progress, progress: 100, buffer: 100 }))
                                 onError(`Export error: Occurred error wihile fetching data: ${error}`)
-                            })
+                                return
+                            }
+                            setProgress((prev: any) => ({ ...prev, progress: prev.progress + 40 / steps, buffer: prev.buffer + 41 / steps }))
+                        }
+                        for (let index = 0; index < rows.length; index++) {
+                            data[index] = {
+                                ...data[index], ...formatSheetData({
+                                    module: module,
+                                    stageId: stage,
+                                    events: byEnrollment.get(rows[index]?.enrollment) ?? [],
+                                    dataStore: selectedSectionDataStore as unknown as selectedDataStoreKey
+                                })
+                            }
                         }
                     }
                 } else if (empty && (module == Modules.Enrollment || module == Modules.Admission)) {
