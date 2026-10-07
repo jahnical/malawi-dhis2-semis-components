@@ -1,3 +1,4 @@
+import { NON_SCHOOL_DAY } from "../../../../utils/constants/nonSchoolDay";
 import Excel from 'exceljs'
 import { saveAs } from 'file-saver'
 import { alignment, border, dataValidation, fill, lock, cancelled } from '../../../../utils/exporterSettings/exporterConsts';
@@ -9,6 +10,7 @@ import { Modules } from 'dhis2-semis-types';
 import { generateValidationSheet } from '../../../../utils/common/generateValidationSheet';
 import { convertNumberToLetter } from '../../../../utils/common/convertNumberToLetter';
 import { SchoolCalendarType } from '../../../../types/dataStore/schoolCalendar';
+import { applyComputedColumns } from './computedColumns';
 
 export function generateFile({ unavailableDays, config }: { unavailableDays: (date: Date, config: SchoolCalendarType) => boolean, config: SchoolCalendarType }) {
     const password = '#saudigitus_SEMIS_Export#'
@@ -152,6 +154,9 @@ export function generateFile({ unavailableDays, config }: { unavailableDays: (da
                 });
             });
 
+            // Performance: grade and term remark columns get a formula from the configured mapping and are locked
+            applyComputedColumns(sheet, headers, { fill, border })
+
             if (module === Modules.Attendance)
                 sheet.eachRow({ includeEmpty: true }, (row: any) => {
                     row.eachCell({ includeEmpty: true }, (cell: any) => {
@@ -159,7 +164,7 @@ export function generateFile({ unavailableDays, config }: { unavailableDays: (da
                             if (unavailableDays != undefined && unavailableDays(new Date(cell._column._key), config)) {
 
                                 cell.dataValidation = null
-                                cell.value = 'Non School Day'
+                                cell.value = NON_SCHOOL_DAY
                                 cell.fill = { fgColor: { argb: 'f8f9fa' }, ...fill as unknown as any }
                                 cell.border = border as unknown as any
                                 cell.font = { size: 10 };

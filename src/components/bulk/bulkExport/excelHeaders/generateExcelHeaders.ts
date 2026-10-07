@@ -6,6 +6,9 @@ import { getFilterLables } from "../../../../utils/format/getFilterLables";
 import { getAttributeHint } from "../../../../utils/format/getAttributeHint";
 import { useRecoilValue } from "recoil";
 import { TranslationState } from "../../../../schemas/translationsSchema";
+import { attendanceProfileAttributes, attendanceRegistrationDataElements } from "./attendanceColumns";
+import { orderPerformanceColumns } from "./performanceColumns";
+import { applicableSubjectDataElements, configuredSubjectDataElements } from "dhis2-semis-functions";
 
 export function generateHeaders(props: GenerateHeaders) {
     const {
@@ -16,8 +19,19 @@ export function generateHeaders(props: GenerateHeaders) {
         sectionType,
         selectedSectionDataStore,
         withSocioEconomics,
-        isSchoolDay
+        isSchoolDay,
+        gradeCode
     } = props
+    // Attendance and performance templates carry only identification columns (see attendanceColumns.ts)
+    const identificationOnly = module === Modules.Attendance || module === Modules.Performance || module === Modules.Final_Result
+    const performanceConfig: any = (selectedSectionDataStore as any)?.performance
+    const performanceStages = new Set<string>((performanceConfig?.programStages ?? []).map((x: any) => x?.programStage))
+    // Subjects the selected standard takes (null: no restriction configured) and every configured subject
+    const applicableSubjects = module === Modules.Performance ? applicableSubjectDataElements(performanceConfig, gradeCode) : null
+    const configuredSubjects = configuredSubjectDataElements(performanceConfig)
+    const gradeToScore = new Map<string, string>(((performanceConfig?.subjects ?? []) as any[])
+        .filter(x => x?.gradeDataElement && x?.scoreDataElement).map(x => [x.gradeDataElement, x.scoreDataElement]))
+    const remarkDataElement: string | undefined = performanceConfig?.termRemarksMapping?.dataElement
     const { getValidDaysToExport } = generateAttendanceDays({ unavailableDays: isSchoolDay as unknown as (args: Date) => boolean })
     const i18n = useRecoilValue(TranslationState) as any
 
@@ -134,7 +148,15 @@ export function generateHeaders(props: GenerateHeaders) {
             } else {
                 let schoolKey: any = []
 
-                if (currStage?.id === selectedSectionDataStore.registration.programStage) {
+                const attendanceOnly = identificationOnly
+                const isRegistration = currStage?.id === selectedSectionDataStore.registration.programStage
+                // The attendance template identifies the learner's class only (see attendanceColumns.ts)
+                const keepInAttendance = attendanceRegistrationDataElements(selectedSectionDataStore)
+
+                if (isRegistration && attendanceOnly) {
+                    defaultLockedHeaders.push(currStage?.displayName)
+                    schoolKey = [{ header: i18n.t('Ref'), key: 'ref', width: 5 }]
+                } else if (isRegistration) {
                     defaultLockedHeaders.push(currStage?.displayName)
                     const defaultHeaders = [
                         {
@@ -163,16 +185,42 @@ export function generateHeaders(props: GenerateHeaders) {
                     fill: colors[(currStage as unknown as any)?.id]
                 }
 
+                const isPerformanceStage = module === Modules.Performance && performanceStages.has(stageId)
+                const stageScoreKeys = isPerformanceStage
+                    ? (currStage?.programStageDataElements ?? [])
+                        .map(de => de?.dataElement?.id)
+                        .filter(id => ((performanceConfig?.subjects ?? []) as any[]).some(x => x?.scoreDataElement === id))
+                        .filter(id => !applicableSubjects || applicableSubjects.has(id))
+                        .map(id => `${stageId}.${id}`)
+                    : []
+
                 currStage?.programStageDataElements.map((de) => {
-                    if (de?.dataElement?.optionSet?.options?.length > 0) filters[de.dataElement.id] = getFilterLables(de.dataElement.optionSet.options)
+                    const deId = de?.dataElement?.id
+                    if (attendanceOnly && isRegistration && !keepInAttendance.has(deId)) return
+                    // Subjects the selected standard does not take are left out of the template
+                    if (isPerformanceStage && applicableSubjects && configuredSubjects.has(deId) && !applicableSubjects.has(deId)) return
+
+                    // Grade and term remark are worked out from the scores by a formula and locked
+                    const scoreForGrade = isPerformanceStage ? gradeToScore.get(deId) : undefined
+                    const formula = scoreForGrade
+                        ? { kind: "grade", scoreKey: `${stageId}.${scoreForGrade}`, config: performanceConfig }
+                        : (isPerformanceStage && deId && deId === remarkDataElement)
+                            ? { kind: "remark", scoreKeys: stageScoreKeys, config: performanceConfig }
+                            : undefined
+
+                    if (!formula && de?.dataElement?.optionSet?.options?.length > 0) filters[de.dataElement.id] = getFilterLables(de.dataElement.optionSet.options)
                     section = {
                         ...section, headers: [...section.headers, {
-                            header: `${de?.dataElement.displayName}${de?.compulsory && empty ? "*" : ""}`,
-                            key: `${stageId}.${de?.dataElement?.id}`,
-                            width: de?.dataElement?.displayName.length + 2
+                            header: `${de?.dataElement.displayName}${de?.compulsory && empty && !formula ? "*" : ""}`,
+                            key: `${stageId}.${deId}`,
+                            width: de?.dataElement?.displayName.length + 2,
+                            ...(formula ? { formula, note: "Filled in automatically from the score. Do not edit." } : {}),
                         }]
                     }
                 })
+
+                // Score then its grade for each subject, term remark last
+                if (isPerformanceStage) section = { ...section, headers: orderPerformanceColumns(section.headers, stageId, performanceConfig) }
 
                 if (currStage?.id === selectedSectionDataStore.registration.programStage)
                     formatedHeaders.unshift(section)
@@ -180,7 +228,11 @@ export function generateHeaders(props: GenerateHeaders) {
             }
         }
 
-        for (const x of programConfig?.programTrackedEntityAttributes || []) {
+        const profileAttributes = identificationOnly
+            ? attendanceProfileAttributes((programConfig?.programTrackedEntityAttributes || []) as any[], selectedSectionDataStore)
+            : (programConfig?.programTrackedEntityAttributes || [])
+
+        for (const x of profileAttributes as any[]) {
             if (x?.trackedEntityAttribute?.optionSet?.options?.length > 0) {
                 filters[x.trackedEntityAttribute.id] = getFilterLables(x.trackedEntityAttribute.optionSet.options);
             }

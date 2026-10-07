@@ -1,10 +1,13 @@
 import { excelData, importData } from "../../../types/bulk/bulkOperations";
 import { selectedDataStoreKey, Modules } from 'dhis2-semis-types';
 import { generateAttendanceEventObjects, generateEnrollmentData, generateEventObjects, generateFinalResultData } from "./createEvents/createEventsObject";
+import { applyPerformanceMapping } from "./createEvents/performanceComputed";
+import { eventDateResolver } from "./createEvents/eventDates";
+import { format } from "date-fns";
 import { postAttendanceValues } from "./postEvents/postAttendance";
 import { postEnrollmentData } from "./postEvents/postEnrollment";
 import { postValues } from "./postEvents/postEvents";
-import { getAcademicYearOptions, useUrlParams } from "dhis2-semis-functions";
+import { calendarForAcademicYear, getAcademicYearOptions, useUrlParams } from "dhis2-semis-functions";
 import { generateAndReserveIds } from "../bulkExport/generateIds/generateAndReserve";
 import { useEnrollmentYearValidation } from 'dhis2-semis-functions';
 import { useSchoolCalendarKey } from '../../../hooks/dataStore/useSchoolCalendarKey';
@@ -73,6 +76,13 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                 uid: "",
                 message: `Academic year ${year} is not in the school calendar; its enrollments use the enrollment date as the academic year start.`,
             }))
+
+            // Dates of new events: within the academic year selected in the header, never after today
+            const dateFor = eventDateResolver(
+                calendarForAcademicYear(schoolCalendar?.schoolCalendar as any[], academicYear, schoolCalendar?.defaults?.academicYear) as any,
+                (selectedSectionDataStore as any)?.performance?.programStages?.map((x: any) => x.programStage) ?? [],
+                format(new Date(), 'yyyy-MM-dd')
+            )
 
             switch (excelData?.module) {
                 case Modules.Attendance:
@@ -223,7 +233,7 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                 }
 
                 case Modules.Final_Result: {
-                    const { events } = generateEventObjects(displayNames, studentsData, programConfig)
+                    const { events } = generateEventObjects(displayNames, studentsData, programConfig, dateFor)
                     const { enrollmentUpdates } = generateFinalResultData(
                         displayNames,
                         studentsData,
@@ -249,7 +259,11 @@ export function useImportData({ setProgress, onError, setStats, stats, setOpenPr
                     break;
 
                 default:
-                    const { events } = generateEventObjects(displayNames, studentsData, programConfig)
+                    const generated = generateEventObjects(displayNames, studentsData, programConfig, dateFor).events
+                    // Performance: grades and term remark always follow the configured mapping
+                    const events = excelData?.module === Modules.Performance
+                        ? applyPerformanceMapping(generated, (selectedSectionDataStore as any)?.performance)
+                        : generated
                     setProgress((prev: any) => ({ ...prev, progress: 20, buffer: 25 }))
 
                     await postData(events, excelData, importMode, programConfig, programStages).finally(() => closeDialog())

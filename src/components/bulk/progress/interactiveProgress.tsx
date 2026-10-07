@@ -34,14 +34,11 @@ export default function ModalProgress({ progress, open, setOpen, module }: { pro
                         }
                     </div>
                     <div className={styles.loading} >
-                        <span>{progress.prorocess == 'export' ?
-                            i18n.t('Exporting {{module}} data', {
-                                module: `${module}`,
-                            })
-                            :
-                            i18n.t('Importing {{module}} data', {
-                                module: `${module}`,
-                            })
+                        <span>{
+                            // e.g. "final-result" -> "final result"; without a module just "Importing data"
+                            module
+                                ? i18n.t(progress.prorocess == 'export' ? 'Exporting {{module}} data' : 'Importing {{module}} data', { module: String(module).replace(/[-_]/g, ' ') })
+                                : i18n.t(progress.prorocess == 'export' ? 'Exporting data' : 'Importing data')
                         } </span>
                         <Lottie style={{ height: 100, marginLeft: "-40px" }} animationData={loading} loop={true} />
                     </div>
