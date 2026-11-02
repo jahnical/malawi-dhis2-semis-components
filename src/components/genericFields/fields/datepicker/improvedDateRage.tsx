@@ -7,6 +7,9 @@ import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import { TranslationState } from '../../../../schemas/translationsSchema';
 import { useRecoilValue } from 'recoil';
+import { calendarForAcademicYear, useUrlParams } from 'dhis2-semis-functions';
+import { useSchoolCalendarKey } from '../../../../hooks/dataStore/useSchoolCalendarKey';
+import { calendarBounds } from '../../../calendar/calendarRange';
 
 interface DateRangePickerProps {
     name: string;
@@ -18,6 +21,12 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ name, disabled, setCh
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const [open, setOpen] = useState(false);
     const i18n = useRecoilValue(TranslationState) as any
+    // With nothing chosen yet, the picker opens on the academic year selected in the header
+    // (its first day up to its last day, or today for the current year), not on today's date
+    const schoolCalendar = useSchoolCalendarKey()
+    const { urlParameters } = useUrlParams()
+    const yearCalendar = calendarForAcademicYear(schoolCalendar?.schoolCalendar as any[], urlParameters?.academicYear as string, schoolCalendar?.defaults?.academicYear) as any
+    const bounds = calendarBounds(yearCalendar)
 
     return (
         <Field name={name}>
@@ -25,8 +34,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ name, disabled, setCh
                 const selected = input.value || {};
                 const value = [
                     {
-                        startDate: selected.startDate || new Date(),
-                        endDate: selected.endDate || new Date(),
+                        startDate: selected.startDate || bounds.min || new Date(),
+                        endDate: selected.endDate || bounds.max || new Date(),
                         key: 'selection',
                     },
                 ];

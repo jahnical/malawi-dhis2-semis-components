@@ -42,9 +42,13 @@ export function postValues({ setStats, setProgress, onError, setOpenProgress }: 
                     trackedEntities: trackedEntity,
                     paging: false
                 }).then((resp: any) => {
-                    let event = resp.find((x: any) => x.enrollment === enrollment && x.programStage == stage)?.event
+                    const existing = resp.find((x: any) => x.enrollment === enrollment && x.programStage == stage)
                     const index = copyData.findIndex(x => x.enrollment === enrollment && x.programStage == stage)
-                    copyData[index] = { ...copyData[index], ...(event ? { event: event } : {}) }
+                    // Updating an existing event keeps its id; its date is set from the school calendar
+                    // (term end for marks, year end for a final result), not the enrollment date it was created with
+                    if (index > -1 && existing?.event) {
+                        copyData[index] = { ...copyData[index], event: existing.event }
+                    }
 
                     updateProgressF(20, 17, excelData.mapping.length * programStages.length)
                 }).catch((error) => {
